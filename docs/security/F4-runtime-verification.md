@@ -63,9 +63,21 @@ Status: PASS
 - No private payloads, athlete details, or new share codes were recorded in this note.
 
 ### 5) Runtime logs review
-Status: NIEZWERYFIKOWANE
+Status: PARTIAL / RYZYKO
 
-Reason: no Supabase/Vercel log channel was available in this verification step.
+- Verification was performed manually with sanitized, high-level log observations.
+- Vercel logs: PASS — only HTTP 200 responses were observed for checked routes.
+- Supabase Auth logs: PASS — no results in the reviewed window.
+- Supabase Edge Functions logs: PASS — no results in the reviewed window.
+- Supabase PostGREST logs: RYZYKO — repeated `Warp server error: Thread killed by timeout manager`.
+- No PR #49-specific RPC regression signature was observed in reviewed logs for:
+  - `reset_share_code`
+  - `generate_share_code`
+  - `get_athlete_by_share_code`
+  - `get_active_injuries_by_share_code`
+  - `get_latest_plan_by_share_code`
+- No `PGRST`, `42501`, schema cache, function-not-found, or RLS error signatures tied to PR #49 RPCs were observed in the reviewed excerpts.
+- PostGREST Warp timeout errors require a separate follow-up investigation.
 
 ### 6) Migration tracking
 Status: DO POPRAWY (audit-trail gap)
@@ -77,10 +89,10 @@ Status: DO POPRAWY (audit-trail gap)
 ## Overall G9 Result
 PARTIAL / BEHAVIORAL PASS WITH EVIDENCE GAPS
 
-Behavioral privilege outcomes are verified as correct, and exposed share-code rotation follow-up is completed (PASS). Formal closeout still requires missing evidence and migration audit-trail decision.
+Behavioral privilege outcomes are verified as correct, exposed share-code rotation follow-up is completed (PASS), and authenticated coach smoke is completed (PASS). Runtime logs review is partial with risk and migration audit-trail decision remains open.
 
 ## Required Follow-ups
-1. Review Supabase and Vercel runtime logs after grant repair.
+1. Investigate Supabase PostGREST Warp timeout errors (`Thread killed by timeout manager`) as a separate operational track.
 2. Decide and document how to close migration tracking audit-trail gap without silently inserting tracking rows.
 3. Optionally verify Supabase advisor warning delta after hardening.
 
