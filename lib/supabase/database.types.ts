@@ -205,6 +205,54 @@ export type Database = {
           },
         ]
       }
+      plan_session_feedback: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          day_number: number
+          feedback_text: string
+          id: string
+          plan_id: string
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          day_number: number
+          feedback_text: string
+          id?: string
+          plan_id: string
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          day_number?: number
+          feedback_text?: string
+          id?: string
+          plan_id?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_session_feedback_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_session_feedback_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fitness_test_results: {
         Row: {
           athlete_id: string
@@ -392,9 +440,46 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_plan_session_feedback_by_share_code: {
+        Args: {
+          p_code: string
+          p_day_number: number
+          p_plan_id: string
+          p_week_number: number
+        }
+        Returns: {
+          athlete_id: string
+          created_at: string
+          day_number: number
+          feedback_text: string
+          id: string
+          plan_id: string
+          updated_at: string
+          week_number: number
+        }[]
+      }
       reset_share_code: {
         Args: { p_athlete_id: string }
         Returns: string
+      }
+      upsert_plan_session_feedback: {
+        Args: {
+          p_code: string
+          p_day_number: number
+          p_feedback_text: string
+          p_plan_id: string
+          p_week_number: number
+        }
+        Returns: {
+          athlete_id: string
+          created_at: string
+          day_number: number
+          feedback_text: string
+          id: string
+          plan_id: string
+          updated_at: string
+          week_number: number
+        }[]
       }
     }
     Enums: {
