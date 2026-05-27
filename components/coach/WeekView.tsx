@@ -1,18 +1,19 @@
 "use client";
 
 import { pl } from "@/lib/i18n/pl";
-import type { Week } from "@/lib/validation/training-plan";
+import type { Day, Week } from "@/lib/validation/training-plan";
 import DayCard from "./DayCard";
 
 interface WeekViewProps {
   week: Week;
+  renderDayFooter?: (day: Day) => React.ReactNode;
 }
 
 /**
  * Renders all days of the selected week.
  * Shows the week's "focus" header, then a stack of expandable DayCards.
  */
-export default function WeekView({ week }: WeekViewProps) {
+export default function WeekView({ week, renderDayFooter }: WeekViewProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -24,7 +25,11 @@ export default function WeekView({ week }: WeekViewProps) {
 
       <div className="space-y-3">
         {week.days.map((day) => (
-          <DayCard key={day.dayNumber} day={day} />
+          <DayCard
+            key={day.dayNumber}
+            day={day}
+            footer={renderDayFooter?.(day) ?? null}
+          />
         ))}
       </div>
     </div>
