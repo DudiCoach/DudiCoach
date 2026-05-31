@@ -7,9 +7,11 @@ import PlanHeader from "@/components/coach/PlanHeader";
 import WeekNavigation from "@/components/coach/WeekNavigation";
 import WeekView from "@/components/coach/WeekView";
 import PlanFooter from "@/components/coach/PlanFooter";
+import PublicDayFeedbackSection from "./PublicDayFeedbackSection";
 
 interface PlanPublicSectionProps {
   plan: PublicTrainingPlan | null;
+  shareCode: string;
 }
 
 /**
@@ -18,7 +20,10 @@ interface PlanPublicSectionProps {
  * Shows an empty state when no plan exists yet.
  * No realtime subscription — plan is static for this session (US-025 §5.1).
  */
-export default function PlanPublicSection({ plan }: PlanPublicSectionProps) {
+export default function PlanPublicSection({
+  plan,
+  shareCode,
+}: PlanPublicSectionProps) {
   const [activeWeek, setActiveWeek] = useState(1);
 
   if (!plan) {
@@ -50,7 +55,19 @@ export default function PlanPublicSection({ plan }: PlanPublicSectionProps) {
         </p>
       </div>
       <WeekNavigation activeWeek={activeWeek} onWeekChange={setActiveWeek} />
-      {week && <WeekView week={week} />}
+      {week && (
+        <WeekView
+          week={week}
+          renderDayFooter={(day) => (
+            <PublicDayFeedbackSection
+              shareCode={shareCode}
+              planId={plan.id}
+              weekNumber={week.weekNumber}
+              dayNumber={day.dayNumber}
+            />
+          )}
+        />
+      )}
       <PlanFooter plan={plan.plan_json} />
     </section>
   );

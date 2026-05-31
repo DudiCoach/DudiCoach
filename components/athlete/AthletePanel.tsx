@@ -74,7 +74,7 @@ export default function AthletePanel({
         <InjuriesPublicSection injuries={injuries} />
       </div>
       <div className="mt-4">
-        <PlanPublicSection plan={initialPlan} />
+        <PlanPublicSection plan={initialPlan} shareCode={shareCode} />
       </div>
 
       <div className="mt-6 flex justify-center">

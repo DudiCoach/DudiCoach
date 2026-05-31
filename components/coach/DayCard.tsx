@@ -9,6 +9,7 @@ import ExerciseRow from "./ExerciseRow";
 
 interface DayCardProps {
   day: Day;
+  footer?: React.ReactNode;
 }
 
 /**
@@ -16,7 +17,7 @@ interface DayCardProps {
  * Header (always visible): day name + duration.
  * Body (expandable, default expanded): warmup, exercises, cooldown.
  */
-export default function DayCard({ day }: DayCardProps) {
+export default function DayCard({ day, footer }: DayCardProps) {
   const [expanded, setExpanded] = useState(true);
   const { viewer } = pl.coach.athlete.plans;
 
@@ -108,6 +109,10 @@ export default function DayCard({ day }: DayCardProps) {
               {day.cooldown}
             </p>
           </div>
+
+          {footer ? (
+            <div className="border-t border-border pt-2">{footer}</div>
+          ) : null}
         </div>
       )}
     </div>

@@ -284,6 +284,12 @@ export const pl = {
         errorGeneric: "Nie udało się wygenerować planu.",
         errorIncompleteData:
           "Uzupełnij dane zawodnika (sport, dni treningowe) przed generowaniem.",
+        feedback: {
+          label: "Feedback zawodnika",
+          updatedAt: "Zaktualizowano",
+          empty: "Brak feedbacku dla tego planu.",
+          loadError: "Nie udalo sie wczytac feedbacku.",
+        },
         viewer: {
           week: "Tydzień {n}",
           focus: "Fokus",
@@ -328,6 +334,21 @@ export const pl = {
       sectionTitle: "Plan treningowy",
       empty: "Brak planu treningowego.",
       generatedOn: "Wygenerowano",
+      feedback: {
+        sectionTitle: "Feedback po treningu",
+        label: "Twoja informacja zwrotna",
+        textareaLabel: "Twoja informacja zwrotna (Tydzien {week}, Dzien {day})",
+        placeholder: "Napisz, jak poszedl trening...",
+        save: "Zapisz feedback",
+        saving: "Zapisywanie...",
+        saved: "Zapisano",
+        saveError: "Nie udalo sie zapisac feedbacku.",
+        loadError: "Nie udalo sie wczytac feedbacku.",
+        maxLengthError: "Maksymalnie 2000 znakow.",
+        emptyError: "Feedback nie moze byc pusty.",
+        loading: "Ladowanie feedbacku...",
+        counter: "{count}/2000",
+      },
     },
   },
 
