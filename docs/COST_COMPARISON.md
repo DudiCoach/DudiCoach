@@ -203,29 +203,31 @@ Both PRs deploy the same DudiCoach application to Firebase. The difference is th
 
 **Verdict:** Cloud Functions is ~$674 cheaper (10.8% savings).
 
-## Scenario 0: Realistic App (30 users/month, 300 page views)
+## Scenario 0: Realistic App (30 users, daily usage)
 
 **Assumptions:**
 - 30 monthly active users
-- 300 page views/month (10 pages/user)
+- Each user logs in **daily** (20 workdays/month)
+- Each session: ~12 page views (dashboard, athlete profiles, plan edits)
+- **30 users × 20 days × 12 pages = 7,200 page views/month**
 - 50KB average page size
-- 15 MB total bandwidth
+- 360 MB total bandwidth
 - 5 builds/month (active development)
-- 50 MB Firestore storage (minimal data)
+- 500 KB Firestore storage (athlete data, plans, etc.)
 
 ### PR #63 (App Hosting)
 
 | Component | Usage | Free Tier | Billed | Cost |
 |-----------|-------|-----------|--------|------|
-| Cloud Run CPU | 37 vCPU-seconds | 180,000 | 0 | $0.00 |
-| Cloud Run Memory | 19 GiB-seconds | 360,000 | 0 | $0.00 |
-| Cloud Run Requests | 300 requests | 2,000,000 | 0 | $0.00 |
+| Cloud Run CPU | 900 vCPU-seconds | 180,000 | 0 | $0.00 |
+| Cloud Run Memory | 450 GiB-seconds | 360,000 | 0 | $0.00 |
+| Cloud Run Requests | 7,200 requests | 2,000,000 | 0 | $0.00 |
 | Cloud Build | 5 builds × 16 min | 2,500 min | 0 | $0.00 |
 | Artifact Registry | 0.6 GB | 0.5 GB | 0.1 GB | $0.01 |
-| Bandwidth | 15 MB | 10 GiB | 0 | $0.00 |
-| Firestore | 50 MB storage | 1 GiB | 0 | $0.00 |
-| Firestore reads | 1,500 reads | 50,000/day | 0 | $0.00 |
-| Firestore writes | 300 writes | 20,000/day | 0 | $0.00 |
+| Bandwidth | 360 MB | 10 GiB | 0 | $0.00 |
+| Firestore | 500 KB storage | 1 GiB | 0 | $0.00 |
+| Firestore reads | 36,000 reads | 50,000/day | 0 | $0.00 |
+| Firestore writes | 7,200 writes | 20,000/day | 0 | $0.00 |
 | Firebase Auth | 30 MAU | 50,000 | 0 | $0.00 |
 | **Total** | | | | **$0.01/month** |
 
@@ -233,18 +235,18 @@ Both PRs deploy the same DudiCoach application to Firebase. The difference is th
 
 | Component | Usage | Free Tier | Billed | Cost |
 |-----------|-------|-----------|--------|------|
-| Invocations | 300 requests | 2,000,000 | 0 | $0.00 |
-| GB-seconds | 75 GB-sec | 400,000 | 0 | $0.00 |
-| CPU-seconds | 37 CPU-sec | 200,000 | 0 | $0.00 |
-| Outbound networking | 15 MB | 5 GB | 0 | $0.00 |
+| Invocations | 7,200 requests | 2,000,000 | 0 | $0.00 |
+| GB-seconds | 1,800 GB-sec | 400,000 | 0 | $0.00 |
+| CPU-seconds | 900 CPU-sec | 200,000 | 0 | $0.00 |
+| Outbound networking | 360 MB | 5 GB | 0 | $0.00 |
 | Firebase Hosting | 10 MB storage | 10 GB | 0 | $0.00 |
-| Firestore | 50 MB storage | 1 GiB | 0 | $0.00 |
-| Firestore reads | 1,500 reads | 50,000/day | 0 | $0.00 |
-| Firestore writes | 300 writes | 20,000/day | 0 | $0.00 |
+| Firestore | 500 KB storage | 1 GiB | 0 | $0.00 |
+| Firestore reads | 36,000 reads | 50,000/day | 0 | $0.00 |
+| Firestore writes | 7,200 writes | 20,000/day | 0 | $0.00 |
 | Firebase Auth | 30 MAU | 50,000 | 0 | $0.00 |
 | **Total** | | | | **$0.00/month** |
 
-### Monthly Breakdown (30 users)
+### Monthly Breakdown (30 users, daily usage)
 
 | Item | PR #63 (App Hosting) | PR #64 (Cloud Functions) |
 |------|---------------------|-------------------------|
@@ -255,7 +257,7 @@ Both PRs deploy the same DudiCoach application to Firebase. The difference is th
 | Firestore | $0.00 | $0.00 |
 | **Total** | **$0.01** | **$0.00** |
 
-**Verdict:** Both options are essentially free at 30 users. The $0.01 difference is negligible. Choose based on deployment preference, not cost.
+**Verdict:** Both options are essentially free at 30 users with daily usage. You're using <1% of free tier limits.
 
 ## Free Tier Limits & Break-Even Points
 
