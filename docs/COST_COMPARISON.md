@@ -257,6 +257,62 @@ Both PRs deploy the same DudiCoach application to Firebase. The difference is th
 
 **Verdict:** Both options are essentially free at 30 users. The $0.01 difference is negligible. Choose based on deployment preference, not cost.
 
+## Free Tier Limits & Break-Even Points
+
+### PR #63 (App Hosting)
+
+| Resource | Free Tier | To Exceed Free Tier | Equivalent Traffic |
+|----------|-----------|---------------------|-------------------|
+| **Cloud Run Requests** | 2M/month | 2,000,001 requests | ~67K users (30 pages/user) |
+| **Cloud Run CPU** | 180K vCPU-seconds | 180,001 vCPU-sec | ~14.4M pages (0.0125 sec/page) |
+| **Cloud Run Memory** | 360K GiB-seconds | 360,001 GiB-sec | ~57.6M pages (0.00625 sec/page) |
+| **Bandwidth (cached)** | 10 GiB/month | 10.24 GiB | ~200K users (50KB/page) |
+| **Bandwidth (uncached)** | 10 GiB/month | 10.24 GiB | ~200K users (50KB/page) |
+| **Cloud Build** | 2,500 min/month | 2,501 min | ~156 builds (16 min/build) |
+| **Artifact Registry** | 0.5 GB | 0.51 GB | ~10 deploys (50MB/deploy) |
+| **Firestore Storage** | 1 GiB | 1.01 GiB | ~20K athletes (50KB/athlete) |
+| **Firestore Reads** | 50K/day (1.5M/month) | 50,001/day | ~10K users (5 reads/user) |
+| **Firestore Writes** | 20K/day (600K/month) | 20,001/day | ~5K users (4 writes/user) |
+| **Firebase Auth MAU** | 50,000/month | 50,001 MAU | 50,001 users |
+
+### PR #64 (Cloud Functions)
+
+| Resource | Free Tier | To Exceed Free Tier | Equivalent Traffic |
+|----------|-----------|---------------------|-------------------|
+| **Invocations** | 2M/month | 2,000,001 requests | ~67K users (30 pages/user) |
+| **GB-seconds** | 400K/month | 400,001 GB-sec | ~16M pages (0.025 sec/page) |
+| **CPU-seconds** | 200K/month | 200,001 CPU-sec | ~16M pages (0.0125 sec/page) |
+| **Outbound Networking** | 5 GB/month | 5.12 GB | ~100K users (50KB/page) |
+| **Firebase Hosting Storage** | 10 GB | 10.1 GB | ~200K users (50KB/page) |
+| **Firebase Hosting Transfer** | 360 MB/day (10.8 GB/month) | 361 MB/day | ~7.2K users/day (50KB/page) |
+| **Firestore Storage** | 1 GiB | 1.01 GiB | ~20K athletes (50KB/athlete) |
+| **Firestore Reads** | 50K/day (1.5M/month) | 50,001/day | ~10K users (5 reads/user) |
+| **Firestore Writes** | 20K/day (600K/month) | 20,001/day | ~5K users (4 writes/user) |
+| **Firebase Auth MAU** | 50,000/month | 50,001 MAU | 50,001 users |
+
+### Side-by-Side: When Do You Start Paying?
+
+| Resource | PR #63 (App Hosting) | PR #64 (Cloud Functions) |
+|----------|---------------------|-------------------------|
+| **Requests** | >67K users | >67K users |
+| **Compute** | >14.4M pages | >16M pages |
+| **Bandwidth** | >200K users | >100K users |
+| **Storage** | >200K users | >200K users |
+| **Auth** | >50K users | >50K users |
+| **Firestore** | >20K athletes | >20K athletes |
+
+### Realistic Scenario: 30 Users
+
+| Metric | Monthly Usage | Free Tier | Remaining |
+|--------|---------------|-----------|-----------|
+| Page views | 300 | 2,000,000 | 1,999,700 |
+| Bandwidth | 15 MB | 10 GB | 9.985 GB |
+| MAU | 30 | 50,000 | 49,970 |
+| Firestore reads | 1,500 | 1,500,000 | 1,498,500 |
+| Firestore writes | 300 | 600,000 | 599,700 |
+
+**You're using 0.015% of available free tier.** You could grow 6,666x before paying anything.
+
 ## Summary Table
 
 | Scale | PR #63 (App Hosting) | PR #64 (Cloud Functions) | Difference |
