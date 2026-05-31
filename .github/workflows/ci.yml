@@ -94,7 +94,9 @@ jobs:
           cache: npm
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
+      - name: Write Firebase service account key
+        run: echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DUDICOACH_APP }}" > /tmp/firebase-sa-key.json
       - name: Deploy to Firebase
         run: firebase deploy --project dudicoach-app
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DUDICOACH_APP }}
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa-key.json
