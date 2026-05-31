@@ -113,6 +113,170 @@ The `GOOGLE_APPLICATION_CREDENTIALS` environment variable tells the Firebase Adm
 | `PERMISSION_DENIED` | Service account lacks required roles | Ensure the service account has "Firebase Admin SDK Administrator" role |
 | `unanonymized` errors | Wrong project ID in the JSON | Ensure the JSON is from the `dudicoach-app` project |
 
+## Connecting a Real Supabase Database
+
+If you need to connect to a real Supabase database (for development, testing, or migration purposes), follow these steps:
+
+### Step 1: Get Supabase Credentials
+
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard) → Select your project
+2. Navigate to **Project Settings** → **API**
+3. Copy the following values:
+   - **Project URL** (e.g., `https://xyzcompany.supabase.co`)
+   - **anon/public key** (starts with `eyJ...`)
+   - **service_role key** (starts with `eyJ...`) — ** keep this secret!**
+
+### Step 2: Configure Environment Variables
+
+Create or update `.env.local` in the project root:
+
+```bash
+# Supabase connection
+NEXT_PUBLIC_SUPABASE_URL=https://xyzcompany.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Service role key (SERVER SIDE ONLY, never expose to client)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Step 3: Verify Connection
+
+```bash
+# Start the dev server
+npm run dev
+
+# Test the connection by visiting:
+# http://localhost:3000/api/health (if available)
+# Or check browser console for connection errors
+```
+
+### Step 4: Run Migrations (if needed)
+
+If you have Supabase migrations to apply:
+
+```bash
+# Install Supabase CLI if not already installed
+npm install -g supabase
+
+# Link to your project
+supabase link --project-ref xyzcompany
+
+# Apply pending migrations
+supabase db push
+```
+
+## Migrating from Supabase to Firestore
+
+This section describes the migration process that was completed in PR #63. Use this as a reference if you need to understand the changes or perform a similar migration.
+
+### Migration Overview
+
+The migration replaced:
+- **Supabase Auth** → Firebase Auth with session cookies
+- **Supabase PostgreSQL** → Firestore (NoSQL document database)
+- **Supabase RLS** → Firebase Security Rules
+- **Supabase client SDK** → Firestore data layer
+
+### What Changed
+
+#### Authentication
+- **Before:** Supabase Auth with `@supabase/ssr` for session management
+- **After:** Firebase Auth with custom session cookies via `/api/auth/session`
+
+```typescript
+// Before (Supabase)
+const supabase = createClient()
+const { data: { user } } = await supabase.auth.getUser()
+
+// After (Firebase)
+const user = await requireAuth() // Verifies Firebase session cookie
+```
+
+#### Database Queries
+- **Before:** Supabase client with RLS policies
+- **After:** Firestore data layer with security rules
+
+```typescript
+// Before (Supabase)
+const { data } = await supabase
+  .from('athletes')
+  .select('*')
+  .eq('coach_id', userId)
+
+// After (Firestore)
+const athletes = await getAthletesByCoach(userId)
+```
+
+#### Data Model Changes
+- **Before:** Relational tables with foreign keys
+- **After:** Document collections with subcollections
+
+```
+// Supabase (relational)
+athletes (id, coach_id, name, ...)
+injuries (id, athlete_id, description, ...)
+
+// Firestore (document-based)
+athletes/{athleteId}
+  injuries/{injuryId}
+  progressions/{progressionId}
+  ...
+```
+
+### Migration Steps Completed
+
+1. **Authentication Migration**
+   - Created `/api/auth/session` for Firebase ID token exchange
+   - Rewrote `auth-guard.ts` for Firebase session cookies
+   - Updated login/logout flows
+
+2. **Data Layer Migration**
+   - Created Firestore data layer (`lib/data/`)
+   - Replaced all Supabase queries with Firestore calls
+   - Created Firestore security rules
+
+3. **Testing Updates**
+   - Updated all tests to mock Firebase instead of Supabase
+   - Maintained test coverage
+
+4. **CI/CD Updates**
+   - Added Firebase deployment to GitHub Actions
+   - Configured Firestore rules deployment
+
+### Rollback Procedure
+
+If you need to rollback to Supabase:
+
+1. **Restore Supabase dependencies:**
+   ```bash
+   npm install @supabase/ssr @supabase/supabase-js
+   ```
+
+2. **Restore environment variables:**
+   ```bash
+   # Add back to .env.local
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   SUPABASE_SERVICE_ROLE_KEY=...
+   ```
+
+3. **Restore code from before PR #63:**
+   ```bash
+   git checkout <commit-hash> -- lib/supabase/
+   git checkout <commit-hash> -- lib/api/auth-guard.ts
+   # etc.
+   ```
+
+### Key Differences to Note
+
+| Aspect | Supabase | Firestore |
+|--------|----------|-----------|
+| **Query syntax** | SQL-like | Document-based |
+| **Real-time** | Built-in | Requires listeners |
+| **Auth** | Built-in | Separate service |
+| **RLS** | Row-level policies | Security rules |
+| **Cost** | Free tier + paid plans | Pay per operation |
+
 ## Firestore Data Model
 
 All data is stored under the `athletes` collection with subcollections:
