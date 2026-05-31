@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Cloud Functions (separate CommonJS project)
+    "functions/**",
   ]),
 ]);
 
