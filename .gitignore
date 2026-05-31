@@ -70,8 +70,17 @@ firebase-debug.log
 firebase-debug.*.log
 *-firebase-*.json
 
+# firebase functions build artifacts (created by build.sh)
+functions/.next/
+functions/public/
+functions/next.config.ts
+functions/tsconfig.json
+functions/package-lock.json
+
 # local e2e credentials
 .e2e-creds.json
 
 # patch files
 *.patch
+node_modules
+functions/node_modules/
