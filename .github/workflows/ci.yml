@@ -102,4 +102,3 @@ jobs:
         run: firebase deploy --project dudicoach-app --only firestore:rules,firestore:indexes
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa-key.json
-        continue-on-error: true
