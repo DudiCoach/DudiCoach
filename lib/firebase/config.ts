@@ -11,9 +11,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase only if it hasn't been initialized yet
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+function getApp() {
+  if (getApps().length > 0) return getApps()[0];
+  return initializeApp(firebaseConfig);
+}
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+export function getFirebaseAuth() {
+  return getAuth(getApp());
+}
+
+export function getFirebaseDb() {
+  return getFirestore(getApp());
+}
+
 export const googleProvider = new GoogleAuthProvider();

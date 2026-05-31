@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { signInWithEmailAndPassword } from "firebase/auth";
 
 import { pl } from "@/lib/i18n/pl";
 import { loginSchema, type LoginInput } from "@/lib/validation/auth";
-import { auth } from "@/lib/firebase/config";
+import { signInWithEmail } from "@/lib/firebase/auth";
 
 export default function LoginForm() {
   const [isPending, setIsPending] = useState(false);
@@ -35,8 +34,7 @@ export default function LoginForm() {
     form.clearErrors("root");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
+      const userCredential = await signInWithEmail(
         data.email,
         data.password,
       );

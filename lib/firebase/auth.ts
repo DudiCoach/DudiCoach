@@ -2,11 +2,12 @@
 
 import {
   signInWithPopup,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { auth, googleProvider } from "./config";
+import { getFirebaseAuth, googleProvider } from "./config";
 
 /**
  * Allowed coach emails for Google login.
@@ -24,12 +25,11 @@ export function isAllowedCoachEmail(email: string | null): boolean {
 
 export async function signInWithGoogle() {
   try {
+    const auth = getFirebaseAuth();
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
 
-    // Check if the email is allowed
     if (!isAllowedCoachEmail(user.email)) {
-      // Sign out the unauthorized user
       await firebaseSignOut(auth);
       return {
         user: null,
@@ -48,8 +48,14 @@ export async function signInWithGoogle() {
   }
 }
 
+export async function signInWithEmail(email: string, password: string) {
+  const auth = getFirebaseAuth();
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
 export async function signOut() {
   try {
+    const auth = getFirebaseAuth();
     await firebaseSignOut(auth);
     return { error: null };
   } catch (error) {
@@ -60,5 +66,6 @@ export async function signOut() {
 }
 
 export function onAuthChange(callback: (user: User | null) => void) {
+  const auth = getFirebaseAuth();
   return onAuthStateChanged(auth, callback);
 }
