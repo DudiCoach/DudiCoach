@@ -261,69 +261,77 @@ Both PRs deploy the same DudiCoach application to Firebase. The difference is th
 
 ## Free Tier Limits & Daily Break-Even Points
 
+### Assumption: 100 Invocations/User/Day
+
+Each user makes up to **100 requests per day** (API calls, page loads, background fetches, etc.).
+
 ### PR #63 (App Hosting)
 
-| Resource | Free Tier | Daily Limit | To Exceed (Daily) | Equivalent Users/Day |
+| Resource | Free Tier | Daily Limit | To Exceed (Daily) | Users/Day to Exceed |
 |----------|-----------|-------------|-------------------|---------------------|
-| **Cloud Run Requests** | 2M/month | 66,667/day | 66,668 requests | ~5,556 users (12 pages/day) |
-| **Cloud Run CPU** | 180K vCPU-sec/month | 6,000 vCPU-sec/day | 6,001 vCPU-sec | ~480K pages/day |
-| **Cloud Run Memory** | 360K GiB-sec/month | 12,000 GiB-sec/day | 12,001 GiB-sec | ~1.92M pages/day |
-| **Bandwidth** | 10 GiB/month | 333 MB/day | 334 MB | ~6,680 users (50KB/page) |
-| **Cloud Build** | 2,500 min/month | 83 min/day | 84 min | ~5 builds/day |
-| **Firestore Reads** | 50K/day | 50K/day | 50,001 reads | ~4,167 users (12 reads/user) |
-| **Firestore Writes** | 20K/day | 20K/day | 20,001 writes | ~1,667 users (12 writes/user) |
+| **Cloud Run Requests** | 2M/month | 66,667/day | 66,668 requests | **667 users** |
+| **Cloud Run CPU** | 180K vCPU-sec/month | 6,000 vCPU-sec/day | 6,001 vCPU-sec | ~48K requests |
+| **Cloud Run Memory** | 360K GiB-sec/month | 12,000 GiB-sec/day | 12,001 GiB-sec | ~192K requests |
+| **Bandwidth** | 10 GiB/month | 333 MB/day | 334 MB | **6,680 users** |
+| **Cloud Build** | 2,500 min/month | 83 min/day | 84 min | 5 builds/day |
+| **Firestore Reads** | 50K/day | 50K/day | 50,001 reads | **500 users** |
+| **Firestore Writes** | 20K/day | 20K/day | 20,001 writes | **200 users** |
 | **Firebase Auth MAU** | 50,000/month | 1,667/day | 1,668 MAU | 1,668 users |
 
 ### PR #64 (Cloud Functions)
 
-| Resource | Free Tier | Daily Limit | To Exceed (Daily) | Equivalent Users/Day |
+| Resource | Free Tier | Daily Limit | To Exceed (Daily) | Users/Day to Exceed |
 |----------|-----------|-------------|-------------------|---------------------|
-| **Invocations** | 2M/month | 66,667/day | 66,668 requests | ~5,556 users (12 pages/day) |
-| **GB-seconds** | 400K/month | 13,333 GB-sec/day | 13,334 GB-sec | ~533K pages/day |
-| **CPU-seconds** | 200K/month | 6,667 CPU-sec/day | 6,668 CPU-sec | ~533K pages/day |
-| **Outbound Networking** | 5 GB/month | 167 MB/day | 168 MB | ~3,360 users (50KB/page) |
-| **Firebase Hosting Transfer** | 360 MB/day | 360 MB/day | 361 MB | ~7,220 users (50KB/page) |
-| **Firestore Reads** | 50K/day | 50K/day | 50,001 reads | ~4,167 users (12 reads/user) |
-| **Firestore Writes** | 20K/day | 20K/day | 20,001 writes | ~1,667 users (12 writes/user) |
+| **Invocations** | 2M/month | 66,667/day | 66,668 requests | **667 users** |
+| **GB-seconds** | 400K/month | 13,333 GB-sec/day | 13,334 GB-sec | ~13K requests |
+| **CPU-seconds** | 200K/month | 6,667 CPU-sec/day | 6,668 CPU-sec | ~6.7K requests |
+| **Outbound Networking** | 5 GB/month | 167 MB/day | 168 MB | **3,360 users** |
+| **Firebase Hosting Transfer** | 360 MB/day | 360 MB/day | 361 MB | 7,220 users |
+| **Firestore Reads** | 50K/day | 50K/day | 50,001 reads | **500 users** |
+| **Firestore Writes** | 20K/day | 20K/day | 20,001 writes | **200 users** |
 | **Firebase Auth MAU** | 50,000/month | 1,667/day | 1,668 MAU | 1,668 users |
 
-### Side-by-Side: Daily Break-Even
+### Side-by-Side: Daily Break-Even (100 req/user/day)
 
 | Resource | PR #63 (App Hosting) | PR #64 (Cloud Functions) | Winner |
 |----------|---------------------|-------------------------|--------|
-| **Requests** | 5,556 users/day | 5,556 users/day | Tie |
-| **Bandwidth** | 6,680 users/day | 3,360 users/day | PR #63 |
-| **Firestore Reads** | 4,167 users/day | 4,167 users/day | Tie |
-| **Firestore Writes** | 1,667 users/day | 1,667 users/day | Tie |
-| **Auth MAU** | 1,668 users/day | 1,668 users/day | Tie |
+| **Requests** | 667 users | 667 users | Tie |
+| **Bandwidth** | 6,680 users | 3,360 users | PR #63 |
+| **Firestore Reads** | 500 users | 500 users | Tie |
+| **Firestore Writes** | **200 users** | **200 users** | Tie |
+| **Auth MAU** | 1,668 users | 1,668 users | Tie |
 
-### What Does 1,667 Users/Day Look Like?
+### What Does 200 Users/Day Look Like?
 
-If each user logs in once daily and views 12 pages:
-- **1,667 users × 12 pages = 20,004 page views/day**
-- **1,667 users × 12 Firestore reads = 20,004 reads/day**
-- **1,667 users × 1 Firestore write = 1,667 writes/day**
+If each user makes 100 requests/day:
+- **200 users × 100 requests = 20,000 requests/day**
+- **200 users × 50 Firestore reads = 10,000 reads/day**
+- **200 users × 10 Firestore writes = 2,000 writes/day**
 
-This would exceed Firestore write limits first.
+**Firestore writes are the bottleneck** — you'll hit that limit first at 200 users.
 
 ### Daily Traffic to Exceed All Free Tiers
 
-| Scenario | Daily Users | Daily Pages | Daily Cost |
-|----------|-------------|-------------|------------|
-| **PR #63 (App Hosting)** | >6,680 users | >80,160 pages | $0.01+ |
-| **PR #64 (Cloud Functions)** | >3,360 users | >40,320 pages | $0.01+ |
+| Resource | Daily Limit | Users to Exceed (100 req/user) |
+|----------|-------------|--------------------------------|
+| **Firestore Writes** | 20,000 | **200 users** |
+| **Firestore Reads** | 50,000 | **500 users** |
+| **Requests** | 66,667 | **667 users** |
+| **Auth MAU** | 1,667 | **1,668 users** |
+| **Bandwidth (PR #63)** | 333 MB | **6,680 users** |
+| **Bandwidth (PR #64)** | 167 MB | **3,360 users** |
 
-### Realistic Scenario: 30 Users (Daily Usage)
+### Realistic Scenario: 30 Users (100 req/user/day)
 
-| Metric | Daily Usage | Daily Free Tier | % Used |
-|--------|-------------|-----------------|--------|
-| Page views | 360 | 66,667 | 0.54% |
-| Bandwidth | 18 MB | 333 MB | 5.4% |
-| Firestore reads | 2,160 | 50,000 | 4.3% |
-| Firestore writes | 360 | 20,000 | 1.8% |
-| Auth MAU | 30 | 1,667 | 1.8% |
+| Metric | Daily Usage | Daily Free Tier | % Used | Headroom |
+|--------|-------------|-----------------|--------|----------|
+| Requests | 3,000 | 66,667 | 4.5% | 22x |
+| Firestore reads | 1,500 | 50,000 | 3.0% | 33x |
+| Firestore writes | 300 | 20,000 | 1.5% | 67x |
+| Bandwidth | 150 MB | 333 MB | 45% | 2.2x |
+| Auth MAU | 30 | 1,667 | 1.8% | 56x |
 
-**You're using <6% of daily free tier limits.** You could grow **18x** before hitting any limits.
+**You're using <45% of daily free tier limits.** You could grow **2.2x** before hitting bandwidth limits, or **33x** before hitting Firestore read limits.
 
 ## Summary Table
 
