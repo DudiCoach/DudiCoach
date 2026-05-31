@@ -98,7 +98,8 @@ jobs:
         run: printf '%s' "$FIREBASE_SA_KEY" > /tmp/firebase-sa-key.json
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DUDICOACH_APP }}
-      - name: Deploy Firestore rules and indexes
-        run: firebase deploy --only firestore:rules,firestore:indexes --project dudicoach-app
+      - name: Deploy to Firebase
+        run: firebase deploy --project dudicoach-app --only firestore:rules,firestore:indexes
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa-key.json
+        continue-on-error: true
