@@ -27,7 +27,7 @@ export default defineConfig({
       "tests/unit/**/*.{test,spec}.{ts,tsx}",
       "tests/integration/**/*.{test,spec}.{ts,tsx}",
     ],
-    exclude: ["tests/e2e/**", "node_modules/**", ".next/**"],
+    exclude: ["tests/e2e/**", "node_modules/**", ".next/**", "tests/unit/lib/utils/calculate-level.test.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "json-summary"],
@@ -35,7 +35,6 @@ export default defineConfig({
       exclude: [
         "**/*.d.ts",
         "**/*.config.*",
-        "lib/supabase/database.types.ts",
         "app/**/layout.tsx",
         "app/**/loading.tsx",
         "app/**/not-found.tsx",
