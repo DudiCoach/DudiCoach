@@ -60,9 +60,9 @@ function makeFirestoreFeedbackChain(feedbackData: { id: string; [key: string]: u
       docs: feedbackData.map((d) => ({
         id: d.id,
         data: () => {
-          const copy = { ...d };
-          delete copy.id;
-          return copy;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id, ...rest } = d;
+          return rest;
         },
       })),
     }),

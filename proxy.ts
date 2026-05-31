@@ -7,10 +7,10 @@ const isProtectedRoute = (pathname: string) =>
   protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
 
 /**
- * Next.js middleware — lightweight cookie-presence check.
+ * Next.js proxy — lightweight cookie-presence check.
  * Full session verification happens in lib/api/auth-guard.ts.
  */
-export function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
 
