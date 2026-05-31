@@ -179,7 +179,7 @@ describe("GET /api/athletes", () => {
     setupUnauthenticated();
 
     const response = await listAthletes();
-    const json = await response.json();
+    await response.json();
 
     expect(response.status).toBe(401);
     expect(mockData.getAthletesByCoach).not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ describe("GET /api/athletes/[id]", () => {
 
     const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "GET");
     const response = await getAthlete(req as Parameters<typeof getAthlete>[0], routeContext("athlete-uuid-001"));
-    const json = await response.json();
+    await response.json();
 
     expect(response.status).toBe(401);
     expect(mockData.getAthleteById).not.toHaveBeenCalled();
@@ -263,7 +263,7 @@ describe("PATCH /api/athletes/[id]", () => {
 
     const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "PATCH", { weight_kg: 78 });
     const response = await PATCH(req as Parameters<typeof PATCH>[0], routeContext("athlete-uuid-001"));
-    const json = await response.json();
+    await response.json();
 
     expect(response.status).toBe(401);
     expect(mockData.updateAthlete).not.toHaveBeenCalled();
@@ -303,7 +303,7 @@ describe("DELETE /api/athletes/[id]", () => {
 
     const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "DELETE");
     const response = await DELETE(req as Parameters<typeof DELETE>[0], routeContext("athlete-uuid-001"));
-    const json = await response.json();
+    await response.json();
 
     expect(response.status).toBe(401);
     expect(mockData.deleteAthlete).not.toHaveBeenCalled();

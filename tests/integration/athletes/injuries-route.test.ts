@@ -74,15 +74,6 @@ function setupAuthenticated() {
   mockRequireAuth.mockResolvedValue({ user: COACH_USER, response: null });
 }
 
-function setupUnauthenticated() {
-  mockRequireAuth.mockResolvedValue({
-    user: null,
-    response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    }),
-  });
-}
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -108,7 +108,7 @@ export default function ProgressionCard({
           <div className="space-y-1 max-h-48 overflow-y-auto">
             {[...progressions]
               .reverse()
-              .map((p, idx) => (
+              .map((p) => (
                 <div
                   key={p.id}
                   className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-input/50"

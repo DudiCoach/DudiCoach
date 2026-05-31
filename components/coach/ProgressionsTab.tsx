@@ -18,7 +18,7 @@ export default function ProgressionsTab({ athlete }: ProgressionsTabProps) {
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const progressionsQuery = useProgressions(athlete.id);
 
-  const allProgressions = progressionsQuery.data?.data ?? [];
+  const allProgressions = useMemo(() => progressionsQuery.data?.data ?? [], [progressionsQuery.data?.data]);
   const exercises = progressionsQuery.data?.exercises ?? [];
   const hasError = Boolean(progressionsQuery.error);
   const hasProgressions = allProgressions.length > 0;

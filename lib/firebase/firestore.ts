@@ -9,7 +9,6 @@ import {
   where,
   orderBy,
   onSnapshot,
-  writeBatch,
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "./config";
@@ -105,7 +104,6 @@ export async function getAthletes(coachId: string): Promise<FirestoreAthlete[]> 
 }
 
 export async function getAthlete(id: string): Promise<FirestoreAthlete | null> {
-  const docRef = doc(db, ATHLETES_COLLECTION, id);
   const snapshot = await getDocs(query(collection(db, ATHLETES_COLLECTION), where("__name__", "==", id)));
   if (snapshot.empty) return null;
   return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirestoreAthlete;

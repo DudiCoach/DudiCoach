@@ -60,8 +60,9 @@ function makeFirestoreFeedbackChain(feedbackData: { id: string; [key: string]: u
       docs: feedbackData.map((d) => ({
         id: d.id,
         data: () => {
-          const { id: _id, ...rest } = d;
-          return rest;
+          const copy = { ...d };
+          delete copy.id;
+          return copy;
         },
       })),
     }),

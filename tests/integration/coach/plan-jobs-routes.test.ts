@@ -97,8 +97,8 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
-    const json = await response.json();
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
+    await response.json();
 
     expect(response.status).toBe(401);
   });
@@ -109,7 +109,7 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    const response = await POST(request as any);
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(400);
@@ -124,7 +124,7 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(404);
@@ -142,8 +142,8 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
-    const json = await response.json();
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
+    await response.json();
 
     expect(response.status).toBe(404);
   });
@@ -159,7 +159,7 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(422);
@@ -174,7 +174,7 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(429);
@@ -190,7 +190,7 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(409);
@@ -203,7 +203,7 @@ describe("POST /api/coach/plans/jobs", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const response = await POST(request as any);
+    const response = await POST(request as unknown as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(202);
@@ -226,8 +226,8 @@ describe("GET /api/coach/plans/jobs/[jobId]", () => {
       }),
     });
 
-    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
-    const json = await response.json();
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as unknown as Parameters<typeof GET>[0], GETrouteContext("job-uuid-001"));
+    await response.json();
 
     expect(response.status).toBe(401);
   });
@@ -235,8 +235,8 @@ describe("GET /api/coach/plans/jobs/[jobId]", () => {
   it("returns 404 when job does not exist", async () => {
     mockGetPlanJob.mockResolvedValue(null);
 
-    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
-    const json = await response.json();
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as unknown as Parameters<typeof GET>[0], GETrouteContext("job-uuid-001"));
+    await response.json();
 
     expect(response.status).toBe(404);
   });
@@ -247,14 +247,14 @@ describe("GET /api/coach/plans/jobs/[jobId]", () => {
       coach_id: "other-coach-id",
     });
 
-    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
-    const json = await response.json();
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as unknown as Parameters<typeof GET>[0], GETrouteContext("job-uuid-001"));
+    await response.json();
 
     expect(response.status).toBe(404);
   });
 
   it("returns job status", async () => {
-    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as unknown as Parameters<typeof GET>[0], GETrouteContext("job-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(200);

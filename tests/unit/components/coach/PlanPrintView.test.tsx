@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect } from "vitest";
-import { render, screen, getAllByText } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import PlanPrintView from "@/components/coach/PlanPrintView";
 import type { TrainingPlan } from "@/lib/api/plans";

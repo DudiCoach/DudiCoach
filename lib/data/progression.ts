@@ -1,6 +1,5 @@
 import {
   getProgressions as fbGet,
-  getProgressionsByExercise as fbGetByExercise,
   createProgression as fbCreate,
   updateProgression as fbUpdate,
   deleteProgression as fbDelete,
