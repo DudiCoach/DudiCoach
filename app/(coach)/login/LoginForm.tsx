@@ -1,17 +1,19 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 import { pl } from "@/lib/i18n/pl";
 import { loginSchema, type LoginInput } from "@/lib/validation/auth";
-
-import { signInAction } from "./actions";
+import { auth } from "@/lib/firebase/config";
 
 export default function LoginForm() {
-  const [isPending, startPendingTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const router = useRouter();
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -29,30 +31,49 @@ export default function LoginForm() {
   } = form;
 
   async function onSubmit(data: LoginInput) {
-    startPendingTransition(async () => {
-      const result = await signInAction(data);
+    setIsPending(true);
+    form.clearErrors("root");
 
-      if (!result) {
-        // signInAction redirected — no return value comes back
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        data.email,
+        data.password,
+      );
+
+      const idToken = await userCredential.user.getIdToken();
+
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) {
+        form.setError("root", {
+          message: pl.auth.login.errorGeneric,
+        });
+        setIsPending(false);
         return;
       }
 
-      if (!result.ok) {
-        let message: string;
-        switch (result.error) {
-          case "invalid_credentials":
-            message = pl.auth.login.errorInvalid;
-            form.resetField("password");
-            break;
-          case "network":
-            message = pl.auth.login.errorNetwork;
-            break;
-          default:
-            message = pl.auth.login.errorGeneric;
-        }
-        form.setError("root", { message });
+      router.push("/dashboard");
+    } catch (err) {
+      const e = err as { code?: string; message?: string };
+      if (
+        e.code === "auth/invalid-credential" ||
+        e.code === "auth/user-not-found" ||
+        e.code === "auth/wrong-password"
+      ) {
+        form.resetField("password");
+        form.setError("root", { message: pl.auth.login.errorInvalid });
+      } else if (e.code === "auth/network-request-failed") {
+        form.setError("root", { message: pl.auth.login.errorNetwork });
+      } else {
+        form.setError("root", { message: pl.auth.login.errorGeneric });
       }
-    });
+      setIsPending(false);
+    }
   }
 
   const isDisabled = isPending || isSubmitting;

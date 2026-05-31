@@ -34,7 +34,7 @@ vi.mock("@/components/coach/WeekNavigation", () => ({
   ),
 }));
 
-vi.mock("@/components/coach/WeekView", () => ({
+vi.mock("@/components/athlete/WeekViewWithFeedback", () => ({
   default: ({ week }: { week: Week }) => (
     <div data-testid="week-view">{`Week ${week.weekNumber}`}</div>
   ),
@@ -106,7 +106,7 @@ function makePlan(overrides: Partial<PublicTrainingPlan> = {}): PublicTrainingPl
 
 describe("PlanPublicSection", () => {
   it("renders empty state section title when plan is null", () => {
-    render(<PlanPublicSection plan={null} />);
+    render(<PlanPublicSection plan={null} shareCode="ABC234" />);
 
     expect(
       screen.getByText(pl.athletePanel.plan.sectionTitle),
@@ -114,39 +114,39 @@ describe("PlanPublicSection", () => {
   });
 
   it("renders empty state message when plan is null", () => {
-    render(<PlanPublicSection plan={null} />);
+    render(<PlanPublicSection plan={null} shareCode="ABC234" />);
 
     expect(screen.getByText(pl.athletePanel.plan.empty)).toBeInTheDocument();
   });
 
   it("does not render PlanHeader when plan is null", () => {
-    render(<PlanPublicSection plan={null} />);
+    render(<PlanPublicSection plan={null} shareCode="ABC234" />);
 
     expect(screen.queryByTestId("plan-header")).not.toBeInTheDocument();
   });
 
   it("does not render WeekNavigation when plan is null", () => {
-    render(<PlanPublicSection plan={null} />);
+    render(<PlanPublicSection plan={null} shareCode="ABC234" />);
 
     expect(screen.queryByTestId("week-navigation")).not.toBeInTheDocument();
   });
 
   it("renders PlanHeader with plan name when plan is provided", () => {
-    render(<PlanPublicSection plan={makePlan()} />);
+    render(<PlanPublicSection plan={makePlan()} shareCode="ABC234" />);
 
     expect(screen.getByTestId("plan-header")).toBeInTheDocument();
     expect(screen.getByText("Program siłowy 4-tyg.")).toBeInTheDocument();
   });
 
   it("renders WeekNavigation when plan is provided", () => {
-    render(<PlanPublicSection plan={makePlan()} />);
+    render(<PlanPublicSection plan={makePlan()} shareCode="ABC234" />);
 
     expect(screen.getByTestId("week-navigation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tydzień 1" })).toBeInTheDocument();
   });
 
   it("does not render empty state when plan is provided", () => {
-    render(<PlanPublicSection plan={makePlan()} />);
+    render(<PlanPublicSection plan={makePlan()} shareCode="ABC234" />);
 
     expect(
       screen.queryByText(pl.athletePanel.plan.empty),
@@ -157,20 +157,20 @@ describe("PlanPublicSection", () => {
   });
 
   it("renders WeekView for the active week (week 1 by default)", () => {
-    render(<PlanPublicSection plan={makePlan()} />);
+    render(<PlanPublicSection plan={makePlan()} shareCode="ABC234" />);
 
     expect(screen.getByTestId("week-view")).toBeInTheDocument();
     expect(screen.getByText("Week 1")).toBeInTheDocument();
   });
 
   it("renders PlanFooter when plan is provided", () => {
-    render(<PlanPublicSection plan={makePlan()} />);
+    render(<PlanPublicSection plan={makePlan()} shareCode="ABC234" />);
 
     expect(screen.getByTestId("plan-footer")).toBeInTheDocument();
   });
 
   it("renders generatedOn label and formatted date when plan is provided", () => {
-    render(<PlanPublicSection plan={makePlan()} />);
+    render(<PlanPublicSection plan={makePlan()} shareCode="ABC234" />);
 
     // The fixture uses created_at: "2026-04-24T10:00:00Z"
     // pl-PL locale formats this as "24 kwietnia 2026"
@@ -183,7 +183,7 @@ describe("PlanPublicSection", () => {
   });
 
   it("does not render generatedOn line when plan is null", () => {
-    render(<PlanPublicSection plan={null} />);
+    render(<PlanPublicSection plan={null} shareCode="ABC234" />);
 
     expect(
       screen.queryByText(

@@ -1,7 +1,15 @@
-import type { Tables } from "@/lib/supabase/database.types";
 import type { CreateFitnessTestResultInput } from "@/lib/validation/fitness-test";
 
-export type FitnessTestResult = Tables<"fitness_test_results">;
+export interface FitnessTestResult {
+  id: string;
+  athlete_id: string;
+  test_key: string;
+  test_date: string;
+  value: number;
+  unit?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
 
 export const fitnessTestKeys = {
   all: (athleteId: string) => ["athletes", athleteId, "fitness-tests"] as const,

@@ -1,20 +1,16 @@
 "use client";
 
 /**
- * Custom hook for subscribing to real-time athlete updates via Supabase Realtime.
+ * Custom hook for subscribing to athlete updates via polling.
  *
- * Connects to broadcast channel `athlete:{shareCode}` and listens for
- * `athlete_updated` events broadcast by the PATCH /api/athletes/[id] handler.
- *
- * On reconnect, re-fetches latest data from /api/athlete/[shareCode] to catch
- * any updates missed during disconnection.
+ * Polls /api/athlete/{shareCode} at regular intervals to get the latest data.
+ * Replaces the previous Supabase Realtime implementation.
  *
  * See: docs/design/US-004-design.md §7
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
 import type { AthletePublic } from "@/lib/types/athlete-public";
 
 export type ConnectionStatus = "connected" | "connecting" | "disconnected";
@@ -30,58 +26,42 @@ interface UseRealtimeAthleteReturn {
   connectionStatus: ConnectionStatus;
 }
 
+const POLL_INTERVAL_MS = 30_000; // 30 seconds
+
 export function useRealtimeAthlete({
   shareCode,
   initialData,
   onInjuriesChanged,
 }: UseRealtimeAthleteOptions): UseRealtimeAthleteReturn {
   const [athlete, setAthlete] = useState<AthletePublic>(initialData);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
-  const supabase = useMemo(() => createClient(), []);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connected");
   const onInjuriesChangedRef = useRef(onInjuriesChanged);
 
   useEffect(() => {
     onInjuriesChangedRef.current = onInjuriesChanged;
   }, [onInjuriesChanged]);
 
-  // Subscribe to broadcast channel
   useEffect(() => {
-    const channel = supabase.channel(`athlete:${shareCode}`);
-
-    channel
-      .on("broadcast", { event: "athlete_updated" }, (payload) => {
-        setAthlete(payload.payload as AthletePublic);
-      })
-      .on("broadcast", { event: "injuries_changed" }, () => {
-        onInjuriesChangedRef.current?.();
-      })
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setConnectionStatus("connected");
-          onInjuriesChangedRef.current?.();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          setConnectionStatus("disconnected");
-        }
-      });
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [shareCode, supabase]);
-
-  // Re-fetch on reconnect to catch missed updates during disconnection
-  useEffect(() => {
-    if (connectionStatus === "connected") {
+    const intervalId = setInterval(() => {
       fetch(`/api/athlete/${shareCode}`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch");
+          return res.json();
+        })
         .then((json: { data?: AthletePublic }) => {
-          if (json.data) setAthlete(json.data);
+          if (json.data) {
+            setAthlete(json.data);
+            setConnectionStatus("connected");
+            onInjuriesChangedRef.current?.();
+          }
         })
         .catch(() => {
-          // Silent fail — we already have data from initial load; reconnect will retry
+          setConnectionStatus("disconnected");
         });
-    }
-  }, [connectionStatus, shareCode]);
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [shareCode]);
 
   return { athlete, connectionStatus };
 }

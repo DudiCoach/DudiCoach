@@ -1,15 +1,17 @@
-import type { User } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getAuth } from "firebase-admin/auth";
+
+import { getFirebaseAdmin } from "@/lib/firebase/admin";
 
 export const UNAUTHORIZED_ERROR_MESSAGE = "Brak autoryzacji.";
 
-interface SupabaseAuthClient {
-  auth: {
-    getUser: () => Promise<{
-      data: { user: User | null };
-      error: { message?: string; code?: string } | null;
-    }>;
-  };
+const SESSION_COOKIE_NAME = "firebase-session";
+
+/** Simplified user type returned by requireAuth. */
+export interface AuthUser {
+  uid: string;
+  email: string | null;
 }
 
 function unauthorizedResponse() {
@@ -21,29 +23,29 @@ function unauthorizedResponse() {
 
 /**
  * Central auth guard for protected Route Handlers.
- * Returns JSON 401 both when the session is missing and when Supabase auth
- * returns an error, so callers don't accidentally leak 500s for unauth flows.
+ * Reads the Firebase session cookie, verifies it, and returns the user.
+ * Returns JSON 401 when the session is missing or invalid.
  */
 export async function requireAuth(
-  supabase: SupabaseAuthClient,
   routeLabel: string,
-): Promise<{ user: User; response: null } | { user: null; response: NextResponse }> {
+): Promise<{ user: AuthUser; response: null } | { user: null; response: NextResponse }> {
   try {
-    const { data, error } = await supabase.auth.getUser();
+    getFirebaseAdmin();
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-    if (error || !data.user) {
-      if (error) {
-        console.error(`[${routeLabel}] auth.getUser() error`, {
-          code: error.code,
-          message: error.message,
-        });
-      }
+    if (!sessionCookie) {
       return { user: null, response: unauthorizedResponse() };
     }
 
-    return { user: data.user, response: null };
+    const decoded = await getAuth().verifySessionCookie(sessionCookie, true);
+
+    return {
+      user: { uid: decoded.uid, email: decoded.email ?? null },
+      response: null,
+    };
   } catch (error) {
-    console.error(`[${routeLabel}] auth.getUser() threw`, {
+    console.error(`[${routeLabel}] session verification failed`, {
       message: error instanceof Error ? error.message : String(error),
     });
     return { user: null, response: unauthorizedResponse() };

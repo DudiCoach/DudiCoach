@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Coaches can read/write their own athletes
+    match /athletes/{athleteId} {
+      allow read, write: if request.auth != null && 
+        resource.data.coachId == request.auth.uid;
+      allow create: if request.auth != null && 
+        request.resource.data.coachId == request.auth.uid;
+    }
+
+    // Subcollections under athletes
+    match /athletes/{athleteId}/{document=**} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/athletes/$(athleteId)).data.coachId == request.auth.uid;
+    }
+
+    // Public share codes (read-only for unauthenticated users)
+    match /shareCodes/{code} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

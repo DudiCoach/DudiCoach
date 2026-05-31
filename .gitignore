@@ -64,5 +64,14 @@ supabase/.temp
 !.claude/agents/
 !.claude/agents/**
 
+# firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+*-firebase-*.json
+
 # local e2e credentials
 .e2e-creds.json
+
+# patch files
+*.patch

@@ -1,10 +1,20 @@
-import type { Tables } from "@/lib/supabase/database.types";
 import type {
   CreateInjuryInput,
   UpdateInjuryInput,
 } from "@/lib/validation/injury";
 
-export type Injury = Tables<"injuries">;
+export interface Injury {
+  id: string;
+  athlete_id: string;
+  name: string;
+  body_location: string;
+  severity: number;
+  injury_date: string;
+  status: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export const injuryKeys = {
   all: (athleteId: string) => ["athletes", athleteId, "injuries"] as const,

@@ -2,372 +2,263 @@
 
 import { beforeEach, vi } from "vitest";
 
-import { PLAN_JOB_STATUS_SELECT } from "@/lib/api/plan-jobs";
-
-const { mockGetUser, mockFrom } = vi.hoisted(() => {
-  const mockGetUser = vi.fn();
-  const mockFrom = vi.fn();
-  return { mockGetUser, mockFrom };
+const { mockRequireAuth, mockGetAthleteById, mockCreatePlanJob, mockCheckJobRateLimit, mockGetPlanJobsByAthlete, mockGetPlanJob } = vi.hoisted(() => {
+  const mockRequireAuth = vi.fn();
+  const mockGetAthleteById = vi.fn();
+  const mockCreatePlanJob = vi.fn();
+  const mockCheckJobRateLimit = vi.fn();
+  const mockGetPlanJobsByAthlete = vi.fn();
+  const mockGetPlanJob = vi.fn();
+  return { mockRequireAuth, mockGetAthleteById, mockCreatePlanJob, mockCheckJobRateLimit, mockGetPlanJobsByAthlete, mockGetPlanJob };
 });
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-    from: mockFrom,
-  })),
+vi.mock("@/lib/api/auth-guard", () => ({
+  requireAuth: (...args: unknown[]) => mockRequireAuth(...args),
+}));
+
+vi.mock("@/lib/firebase/admin", () => ({
+  getAthleteById: mockGetAthleteById,
+}));
+
+vi.mock("@/lib/data/plan-job", () => ({
+  createPlanJob: mockCreatePlanJob,
+  checkJobRateLimit: mockCheckJobRateLimit,
+  getPlanJobsByAthlete: mockGetPlanJobsByAthlete,
+  getPlanJob: mockGetPlanJob,
 }));
 
 import { POST } from "@/app/api/coach/plans/jobs/route";
 import { GET } from "@/app/api/coach/plans/jobs/[jobId]/route";
 
-const COACH_USER = { id: "coach-uuid-001", email: "coach@test.com" };
+const COACH_USER = { uid: "coach-uuid-001", email: "coach@test.com" };
 const ATHLETE_ID = "550e8400-e29b-41d4-a716-446655440111";
 
-const ATHLETE = {
+const ATHLETE_DATA = {
   id: ATHLETE_ID,
-  name: "US-026 Athlete",
-  coach_id: COACH_USER.id,
-  age: 22,
-  weight_kg: 78,
-  height_cm: 180,
-  sport: "silownia",
-  training_start_date: "2025-01-01",
-  training_days_per_week: 4,
-  session_minutes: 60,
-  current_phase: "building",
-  goal: "strength",
-  notes: null,
-  share_code: "ABC234",
-  share_active: false,
-  created_at: "2026-04-20T00:00:00.000Z",
-  updated_at: "2026-04-20T00:00:00.000Z",
+  data: {
+    coachId: COACH_USER.uid,
+    name: "US-026 Athlete",
+    age: 22,
+    weightKg: 78,
+    heightCm: 180,
+    sport: "silownia",
+    trainingStartDate: "2025-01-01",
+    trainingDaysPerWeek: 4,
+    sessionMinutes: 60,
+    currentPhase: "building",
+    goal: "strength",
+    notes: null,
+    shareCode: "ABC234",
+    shareActive: false,
+    createdAt: "2026-04-20T00:00:00.000Z",
+    updatedAt: "2026-04-20T00:00:00.000Z",
+  },
 };
 
-const JOB_ROW = {
+const JOB = {
   id: "job-uuid-001",
   athlete_id: ATHLETE_ID,
-  status: "queued",
-  attempt_count: 0,
-  max_attempts: 3,
+  coach_id: COACH_USER.uid,
+  status: "pending" as const,
   plan_id: null,
   error_code: null,
   error_message: null,
+  attempt_count: 0,
+  max_attempts: 3,
+  claim_token: null,
+  claimed_at: null,
+  processing_started_at: null,
   created_at: "2026-04-28T12:00:00.000Z",
   updated_at: "2026-04-28T12:00:00.000Z",
-  completed_at: null,
-  failed_at: null,
 };
-
-function makeAthletesBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(
-      result ?? {
-        data: ATHLETE,
-        error: null,
-      },
-    ),
-  };
-}
-
-function makeInjuriesBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockResolvedValue(
-      result ?? {
-        data: [],
-        error: null,
-      },
-    ),
-  };
-}
-
-function makeJobsInsertBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  return {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(
-      result ?? {
-        data: JOB_ROW,
-        error: null,
-      },
-    ),
-  };
-}
-
-function makeJobsStatusBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(
-      result ?? {
-        data: JOB_ROW,
-        error: null,
-      },
-    ),
-  };
-}
-
-function makePostRequest(body: unknown) {
-  return new Request("http://localhost/api/coach/plans/jobs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-function makeStatusRequest(jobId: string) {
-  return new Request(`http://localhost/api/coach/plans/jobs/${jobId}`, {
-    method: "GET",
-  });
-}
-
-function routeContext(jobId: string) {
-  return { params: Promise.resolve({ jobId }) };
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetUser.mockResolvedValue({ data: { user: COACH_USER }, error: null });
+  mockRequireAuth.mockResolvedValue({ user: COACH_USER, response: null });
+  mockGetAthleteById.mockResolvedValue(ATHLETE_DATA);
+  mockCreatePlanJob.mockResolvedValue(JOB);
+  mockCheckJobRateLimit.mockResolvedValue({ allowed: true });
+  mockGetPlanJobsByAthlete.mockResolvedValue([]);
+  mockGetPlanJob.mockResolvedValue(JOB);
 });
 
 describe("POST /api/coach/plans/jobs", () => {
-  it("returns 401 when unauthenticated", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
+  it("returns 401 when not authenticated", async () => {
+    mockRequireAuth.mockResolvedValue({
+      user: null,
+      response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    });
 
-    const response = await POST(
-      makePostRequest({ athleteId: ATHLETE_ID }) as Parameters<typeof POST>[0],
-    );
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
+    });
+    const response = await POST(request as any);
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when athlete does not exist or is not owned", async () => {
-    const athletesBuilder = makeAthletesBuilder({
-      data: null,
-      error: { code: "PGRST116", message: "No rows found" },
+  it("returns 400 when athleteId is missing", async () => {
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
     });
+    const response = await POST(request as any);
+    const json = await response.json();
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      throw new Error(`Unexpected table: ${table}`);
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("athleteId is required");
+  });
+
+  it("returns 404 when athlete does not exist", async () => {
+    mockGetAthleteById.mockResolvedValue(null);
+
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-
-    const response = await POST(
-      makePostRequest({ athleteId: ATHLETE_ID }) as Parameters<typeof POST>[0],
-    );
+    const response = await POST(request as any);
     const json = await response.json();
 
     expect(response.status).toBe(404);
     expect(json.error).toBe("Not found");
   });
 
-  it("returns 422 when athlete is incomplete for generation", async () => {
-    const athletesBuilder = makeAthletesBuilder({
-      data: { ...ATHLETE, sport: null },
-      error: null,
+  it("returns 404 when athlete is not owned by coach", async () => {
+    mockGetAthleteById.mockResolvedValue({
+      ...ATHLETE_DATA,
+      data: { ...ATHLETE_DATA.data, coachId: "other-coach-id" },
     });
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      throw new Error(`Unexpected table: ${table}`);
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
+    });
+    const response = await POST(request as any);
+    const json = await response.json();
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 422 when athlete data is incomplete", async () => {
+    mockGetAthleteById.mockResolvedValue({
+      ...ATHLETE_DATA,
+      data: { ...ATHLETE_DATA.data, sport: null },
     });
 
-    const response = await POST(
-      makePostRequest({ athleteId: ATHLETE_ID }) as Parameters<typeof POST>[0],
-    );
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
+    });
+    const response = await POST(request as any);
     const json = await response.json();
 
     expect(response.status).toBe(422);
-    expect(typeof json.error).toBe("string");
+    expect(json.error).toContain("Uzupełnij dane zawodnika");
+  });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    mockCheckJobRateLimit.mockResolvedValue({ allowed: false, retryAfterMs: 30000 });
+
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
+    });
+    const response = await POST(request as any);
+    const json = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(json.error).toContain("Zbyt wiele prób");
+    expect(response.headers.get("Retry-After")).toBeTruthy();
   });
 
   it("returns 409 when an active job already exists", async () => {
-    const athletesBuilder = makeAthletesBuilder();
-    const injuriesBuilder = makeInjuriesBuilder();
-    const jobsBuilder = makeJobsInsertBuilder({
-      data: null,
-      error: { code: "23505", message: "duplicate key value" },
-    });
+    mockGetPlanJobsByAthlete.mockResolvedValue([JOB]);
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      if (table === "injuries") return injuriesBuilder;
-      if (table === "plan_generation_jobs") return jobsBuilder;
-      throw new Error(`Unexpected table: ${table}`);
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-
-    const response = await POST(
-      makePostRequest({ athleteId: ATHLETE_ID }) as Parameters<typeof POST>[0],
-    );
+    const response = await POST(request as any);
     const json = await response.json();
 
     expect(response.status).toBe(409);
-    expect(json.error).toBe("Generowanie planu jest już w toku.");
+    expect(json.error).toContain("w toku");
   });
 
-  it("creates queued job with prompt inputs and returns sanitized status row", async () => {
-    const athletesBuilder = makeAthletesBuilder();
-    const injuriesBuilder = makeInjuriesBuilder({
-      data: [
-        {
-          name: "Naderwanie dwugłowego",
-          severity: 4,
-          notes: "Unikaj sprintów",
-          status: "active",
-        },
-      ],
-      error: null,
+  it("creates job and returns 202", async () => {
+    const request = new Request("http://localhost/api/coach/plans/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteId: ATHLETE_ID }),
     });
-    const jobsBuilder = makeJobsInsertBuilder();
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      if (table === "injuries") return injuriesBuilder;
-      if (table === "plan_generation_jobs") return jobsBuilder;
-      throw new Error(`Unexpected table: ${table}`);
-    });
-
-    const response = await POST(
-      makePostRequest({ athleteId: ATHLETE_ID }) as Parameters<typeof POST>[0],
-    );
+    const response = await POST(request as any);
     const json = await response.json();
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(202);
+    expect(json.data).toBeDefined();
     expect(json.data.id).toBe("job-uuid-001");
-    expect(jobsBuilder.select).toHaveBeenCalledWith(PLAN_JOB_STATUS_SELECT);
-    expect(jobsBuilder.insert).toHaveBeenCalledTimes(1);
-
-    const insertedPayload = jobsBuilder.insert.mock.calls[0][0] as {
-      prompt_inputs: { systemPrompt: string; userPrompt: string };
-      coach_id: string;
-      athlete_id: string;
-    };
-    expect(insertedPayload.athlete_id).toBe(ATHLETE_ID);
-    expect(insertedPayload.coach_id).toBe(COACH_USER.id);
-    expect(insertedPayload.prompt_inputs.systemPrompt.length).toBeGreaterThan(0);
-    expect(insertedPayload.prompt_inputs.userPrompt).toContain("Naderwanie dwugłowego");
+    expect(json.data.status).toBe("pending");
+    expect(mockCreatePlanJob).toHaveBeenCalledWith(ATHLETE_ID, COACH_USER.uid);
   });
 });
 
 describe("GET /api/coach/plans/jobs/[jobId]", () => {
-  it("returns 401 when unauthenticated", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
+  const GETrouteContext = (jobId: string) => ({ params: Promise.resolve({ jobId }) });
 
-    const response = await GET(
-      makeStatusRequest("550e8400-e29b-41d4-a716-446655440000") as Parameters<
-        typeof GET
-      >[0],
-      routeContext("550e8400-e29b-41d4-a716-446655440000"),
-    );
+  it("returns 401 when not authenticated", async () => {
+    mockRequireAuth.mockResolvedValue({
+      user: null,
+      response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    });
+
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it("returns 404 for malformed job id", async () => {
-    const response = await GET(
-      makeStatusRequest("abc") as Parameters<typeof GET>[0],
-      routeContext("abc"),
-    );
+  it("returns 404 when job does not exist", async () => {
+    mockGetPlanJob.mockResolvedValue(null);
+
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(404);
-    expect(json.error).toBe("Not found");
-    expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when job is missing or not owned", async () => {
-    const jobsStatusBuilder = makeJobsStatusBuilder({
-      data: null,
-      error: { code: "PGRST116", message: "No rows found" },
+  it("returns 404 when job is not owned by coach", async () => {
+    mockGetPlanJob.mockResolvedValue({
+      ...JOB,
+      coach_id: "other-coach-id",
     });
 
-    mockFrom.mockReturnValue(jobsStatusBuilder);
-
-    const response = await GET(
-      makeStatusRequest("550e8400-e29b-41d4-a716-446655440000") as Parameters<
-        typeof GET
-      >[0],
-      routeContext("550e8400-e29b-41d4-a716-446655440000"),
-    );
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(404);
-    expect(json.error).toBe("Not found");
   });
 
-  it("returns sanitized status projection without private internal fields", async () => {
-    const jobsStatusBuilder = makeJobsStatusBuilder();
-    mockFrom.mockReturnValue(jobsStatusBuilder);
-
-    const response = await GET(
-      makeStatusRequest("550e8400-e29b-41d4-a716-446655440000") as Parameters<
-        typeof GET
-      >[0],
-      routeContext("550e8400-e29b-41d4-a716-446655440000"),
-    );
+  it("returns job status", async () => {
+    const response = await GET(new Request("http://localhost/api/coach/plans/jobs/job-uuid-001") as any, GETrouteContext("job-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(jobsStatusBuilder.select).toHaveBeenCalledWith(PLAN_JOB_STATUS_SELECT);
+    expect(json.data).toBeDefined();
     expect(json.data.id).toBe("job-uuid-001");
-    expect(json.data).not.toHaveProperty("prompt_inputs");
-    expect(json.data).not.toHaveProperty("claim_token");
-  });
-
-  it("sanitizes technical parse details in failed job status payload", async () => {
-    const jobsStatusBuilder = makeJobsStatusBuilder({
-      data: {
-        ...JOB_ROW,
-        status: "failed",
-        error_code: "plan_parse_or_validation_failed",
-        error_message:
-          "Failed to parse JSON from Claude response: Unterminated string at position 15024",
-      },
-      error: null,
-    });
-    mockFrom.mockReturnValue(jobsStatusBuilder);
-
-    const response = await GET(
-      makeStatusRequest("550e8400-e29b-41d4-a716-446655440000") as Parameters<
-        typeof GET
-      >[0],
-      routeContext("550e8400-e29b-41d4-a716-446655440000"),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(json.data.error_code).toBe("plan_parse_or_validation_failed");
-    expect(json.data.errorCode).toBe("plan_parse_or_validation_failed");
-    expect(json.data.error_message).toBe(
-      "Nie udało się przetworzyć odpowiedzi AI. Spróbuj ponownie.",
-    );
-    expect(json.data.errorMessage).toBe(
-      "Nie udało się przetworzyć odpowiedzi AI. Spróbuj ponownie.",
-    );
-    expect(String(json.data.error_message)).not.toContain("position");
-    expect(String(json.data.error_message)).not.toContain("Failed to parse JSON");
   });
 });

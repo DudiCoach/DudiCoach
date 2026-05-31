@@ -6,34 +6,11 @@ import {
   publicFeedbackQuerySchema,
   shareCodePathSchema,
 } from "@/lib/validation/plan-session-feedback";
-import { createClient } from "@/lib/supabase/server";
+import { getAthleteByShareCode } from "@/lib/data/athlete";
+import { getTrainingPlans } from "@/lib/data/training-plan";
+import { upsertSessionFeedback, getSessionFeedbackByDay } from "@/lib/data/session-feedback";
 
 type RouteContext = { params: Promise<{ shareCode: string; planId: string }> };
-type SupabaseErrorLike = { code?: string; message?: string } | null;
-
-type PlanSessionFeedbackRow = {
-  id: string;
-  plan_id: string;
-  athlete_id: string;
-  week_number: number;
-  day_number: number;
-  feedback_text: string;
-  created_at: string;
-  updated_at: string;
-};
-
-function isValidationError(error: SupabaseErrorLike) {
-  return error?.code === "22023";
-}
-
-function isNotFoundLikeError(error: SupabaseErrorLike) {
-  return error?.code === "P0001";
-}
-
-function toFeedbackRow(data: unknown): PlanSessionFeedbackRow | null {
-  const rows = (data as PlanSessionFeedbackRow[] | null) ?? null;
-  return rows?.[0] ?? null;
-}
 
 /**
  * POST /api/athlete/[shareCode]/plans/[planId]/feedback
@@ -67,36 +44,40 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("upsert_plan_session_feedback", {
-    p_code: parsedShareCode.data,
-    p_plan_id: parsedPlanId.data,
-    p_week_number: parsedBody.data.weekNumber,
-    p_day_number: parsedBody.data.dayNumber,
-    p_feedback_text: parsedBody.data.feedbackText,
-  });
-
-  if (error) {
-    if (isValidationError(error)) {
-      return NextResponse.json({ error: "Validation failed" }, { status: 400 });
-    }
-    if (isNotFoundLikeError(error)) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    console.error("[POST /api/athlete/[shareCode]/plans/[planId]/feedback] RPC error", {
-      code: error.code,
-      message: error.message,
-    });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-
-  const row = toFeedbackRow(data);
-  if (!row) {
+  // Resolve athlete from share code
+  const athlete = await getAthleteByShareCode(parsedShareCode.data);
+  if (!athlete) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: row });
+  // Verify plan belongs to this athlete
+  const plans = await getTrainingPlans(athlete.id);
+  const plan = plans.find((p) => p.id === parsedPlanId.data);
+  if (!plan) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Upsert feedback
+  const row = await upsertSessionFeedback(
+    athlete.id,
+    parsedPlanId.data,
+    parsedBody.data.weekNumber,
+    parsedBody.data.dayNumber,
+    parsedBody.data.feedbackText,
+  );
+
+  return NextResponse.json({
+    data: {
+      id: row.id,
+      plan_id: parsedPlanId.data,
+      athlete_id: athlete.id,
+      week_number: row.week_number,
+      day_number: row.day_number,
+      feedback_text: row.feedback_text,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    },
+  });
 }
 
 /**
@@ -129,32 +110,34 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc(
-    "get_plan_session_feedback_by_share_code",
-    {
-      p_code: parsedShareCode.data,
-      p_plan_id: parsedPlanId.data,
-      p_week_number: parsedQuery.data.weekNumber,
-      p_day_number: parsedQuery.data.dayNumber,
-    },
-  );
-
-  if (error) {
-    if (isValidationError(error)) {
-      return NextResponse.json({ error: "Validation failed" }, { status: 400 });
-    }
-    if (isNotFoundLikeError(error)) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    console.error("[GET /api/athlete/[shareCode]/plans/[planId]/feedback] RPC error", {
-      code: error.code,
-      message: error.message,
-    });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  // Resolve athlete from share code
+  const athlete = await getAthleteByShareCode(parsedShareCode.data);
+  if (!athlete) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const row = toFeedbackRow(data);
-  return NextResponse.json({ data: row ?? null });
+  // Get feedback for this specific day
+  const feedback = await getSessionFeedbackByDay(
+    athlete.id,
+    parsedPlanId.data,
+    parsedQuery.data.weekNumber,
+    parsedQuery.data.dayNumber,
+  );
+
+  if (!feedback) {
+    return NextResponse.json({ data: null });
+  }
+
+  return NextResponse.json({
+    data: {
+      id: feedback.id,
+      plan_id: parsedPlanId.data,
+      athlete_id: athlete.id,
+      week_number: feedback.week_number,
+      day_number: feedback.day_number,
+      feedback_text: feedback.feedback_text,
+      created_at: feedback.created_at,
+      updated_at: feedback.updated_at,
+    },
+  });
 }

@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAuth } from "@/lib/api/auth-guard";
-import { createClient } from "@/lib/supabase/server";
-import {
-  createAthleteSchema,
-} from "@/lib/validation/athlete";
 
-/**
- * POST /api/athletes
- * Create a new athlete for the authenticated coach.
- * Returns 201 { data: Athlete } on success.
- */
+import { getAthletesByCoach, createAthlete } from "@/lib/data/athlete";
+import { createAthleteSchema } from "@/lib/validation/athlete";
+
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-
-  const { user, response } = await requireAuth(supabase, "POST /api/athletes");
+  // session cookie auth
+  const { user, response } = await requireAuth( "POST /api/athletes");
   if (response) return response;
 
   let body: unknown;
@@ -26,58 +19,28 @@ export async function POST(request: NextRequest) {
 
   const parsed = createAthleteSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.issues },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.issues }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("athletes")
-    .insert({ ...parsed.data, coach_id: user.id })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("[POST /api/athletes] Supabase error", {
-      code: error.code,
-      hint: error.hint,
-    });
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+  try {
+    const data = await createAthlete(user.uid, parsed.data);
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (error) {
+    console.error("[POST /api/athletes] error", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  return NextResponse.json({ data }, { status: 201 });
 }
 
-/**
- * GET /api/athletes
- * List all athletes owned by the authenticated coach, sorted by updated_at DESC.
- * Returns 200 { data: Athlete[] } on success.
- */
 export async function GET() {
-  const supabase = await createClient();
-
-  const { response } = await requireAuth(supabase, "GET /api/athletes");
+  // session cookie auth
+  const { user, response } = await requireAuth( "GET /api/athletes");
   if (response) return response;
 
-  const { data, error } = await supabase
-    .from("athletes")
-    .select("*")
-    .order("updated_at", { ascending: false });
-
-  if (error) {
-    console.error("[GET /api/athletes] Supabase error", {
-      code: error.code,
-      hint: error.hint,
-    });
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+  try {
+    const data = await getAthletesByCoach(user.uid);
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error("[GET /api/athletes] error", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  return NextResponse.json({ data });
 }

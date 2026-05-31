@@ -5,6 +5,7 @@ import type { TrainingPlan } from "@/lib/api/plans";
 import PlanListItem from "./PlanListItem";
 
 interface PlanListProps {
+  athleteId: string;
   plans: TrainingPlan[];
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -15,6 +16,7 @@ interface PlanListProps {
  * Shows empty state when there are no plans.
  */
 export default function PlanList({
+  athleteId,
   plans,
   selectedId,
   onSelect,
@@ -33,6 +35,7 @@ export default function PlanList({
         <PlanListItem
           key={plan.id}
           plan={plan}
+          athleteId={athleteId}
           selected={plan.id === selectedId}
           onClick={() => onSelect(plan.id)}
         />

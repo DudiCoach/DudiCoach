@@ -2,7 +2,8 @@ import { notFound, redirect } from "next/navigation";
 
 import CoachNavbar from "@/components/coach/CoachNavbar";
 import AthleteEditorShell from "@/components/coach/AthleteEditorShell";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api/auth-guard";
+import { getAthleteById } from "@/lib/data/athlete";
 
 interface AthletePageProps {
   params: Promise<{ id: string }>;
@@ -16,37 +17,18 @@ interface AthletePageProps {
 export default async function AthletePage({ params }: AthletePageProps) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, response } = await requireAuth("GET /athletes/[id]");
+  if (response) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
+  const athlete = await getAthleteById(id);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .single();
-
-  const displayName = profile?.display_name ?? user.email ?? "";
-
-  // Fetch the athlete — RLS ensures the coach can only see their own
-  const { data: athlete, error } = await supabase
-    .from("athletes")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !athlete) {
+  if (!athlete) {
     notFound();
   }
 
   return (
     <div className="bg-background min-h-dvh">
-      <CoachNavbar displayName={displayName} />
+      <CoachNavbar displayName={user.email ?? ""} />
 
       <main className="mx-auto max-w-2xl px-4 py-8">
         <AthleteEditorShell athlete={athlete} />

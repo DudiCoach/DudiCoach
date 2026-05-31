@@ -1,60 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  type PlanJobStatusRow,
-  PLAN_JOB_STATUS_SELECT,
-  UUID_REGEX,
-  toPublicPlanJobStatus,
-} from "@/lib/api/plan-jobs";
 import { requireAuth } from "@/lib/api/auth-guard";
-import { createClient } from "@/lib/supabase/server";
+
+import { getPlanJob } from "@/lib/data/plan-job";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
 
-const NOT_FOUND_ERROR_CODE = "PGRST116";
-type SupabaseErrorLike = { code?: string; message?: string } | null;
-
 /**
  * GET /api/coach/plans/jobs/[jobId]
- * Returns sanitized async job status for the authenticated coach.
+ * Get the status of a plan generation job.
+ * Used for polling by the frontend.
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: RouteContext,
-) {
+export async function GET(_request: NextRequest, { params }: RouteContext) {
   const { jobId } = await params;
-  if (!UUID_REGEX.test(jobId)) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
 
-  const supabase = await createClient();
-  const { response } = await requireAuth(
-    supabase,
+  // session cookie auth
+  const { user, response } = await requireAuth(
     "GET /api/coach/plans/jobs/[jobId]",
   );
   if (response) return response;
 
-  const { data, error } = await supabase
-    .from("plan_generation_jobs")
-    .select(PLAN_JOB_STATUS_SELECT)
-    .eq("id", jobId)
-    .single();
-  const lookupError = error as SupabaseErrorLike;
-
-  if (lookupError || !data) {
-    if (lookupError?.code === NOT_FOUND_ERROR_CODE || !data) {
+  try {
+    // Get the job
+    const job = await getPlanJob(jobId);
+    if (!job) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    console.error("[GET /api/coach/plans/jobs/[jobId]] Supabase error", {
-      code: lookupError?.code,
-      message: lookupError?.message,
-    });
+    // Verify the job belongs to this coach
+    if (job.coach_id !== user.uid) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ data: job });
+  } catch (error) {
+    console.error("[GET /api/coach/plans/jobs/[jobId]] error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
     );
   }
-
-  return NextResponse.json({ data: toPublicPlanJobStatus(data as PlanJobStatusRow) });
 }

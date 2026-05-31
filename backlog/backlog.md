@@ -53,26 +53,28 @@
 
 | ID | Title | Epic | Priority | Estimate | Status |
 |---|---|---|---|---|---|
-| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Draft |
+| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Done |
 | ~~US-011~~ | ~~Kontuzje zawodnika~~ | — | — | — | → Sprint 2 |
 | ~~US-012~~ | ~~Testy sprawnościowe~~ | — | — | — | → Sprint 2 |
-| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Draft |
-| US-014 | Checkbox done + notatki zawodnika per cwiczenie | EPIC-C | P1 | M | Draft |
-| US-015 | Historia snapshotow diagnostyki FMS | EPIC-A | P1 | M | Draft |
-| US-016 | Export planu do PDF | EPIC-B | P1 | S | Draft |
-| US-017 | Wiele planow per zawodnik z historia | EPIC-B | P1 | M | Draft |
-| US-018 | Podsumowanie cyklu (wyniki + notatki trenera) | EPIC-B | P1 | S | Draft |
+| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Done |
+| US-014 | Athlete feedback per plan session/day | EPIC-C | P1 | M | Done |
+| US-015 | Historia snapshotow diagnostyki FMS | EPIC-A | P1 | M | Done |
+| US-016 | Export planu do PDF | EPIC-B | P1 | S | Done |
+| US-017 | Wiele planow per zawodnik z historia | EPIC-B | P1 | M | Done |
+| US-018 | Podsumowanie cyklu (wyniki + notatki trenera) | EPIC-B | P1 | S | Done |
 | ~~US-019~~ | ~~Dashboard hydration~~ | — | — | — | → Sprint 2 |
 | ~~US-020~~ | ~~Unauth API routes~~ | — | — | — | → Sprint 2 |
+| US-025 | Publiczny panel zawodnika - wyswietlanie planu | EPIC-C | P0 | M | Done |
+| US-026 | Async AI plan generation via job queue | EPIC-B | P0 | L | Done |
 
 ## Backlog - v1.2+ (nice-to-have)
 
-| ID | Title | Epic | Priority |
-|---|---|---|---|
-| US-021 | Galeria wideo cwiczen | EPIC-B | P2 |
-| US-022 | Raportowanie RPE i bolu przez zawodnika | EPIC-C | P2 |
-| US-023 | Progresje AI-rekomendowane na bazie feedbacku | EPIC-B | P2 |
-| US-024 | Template'y planow (duplikacja) | EPIC-B | P2 |
+| ID | Title | Epic | Priority | Status |
+|---|---|---|---|---|
+| US-021 | Galeria wideo cwiczen | EPIC-B | P2 | Done |
+| US-022 | Raportowanie RPE i bolu przez zawodnika | EPIC-C | P2 | Done |
+| US-023 | Progresje AI-rekomendowane na bazie feedbacku | EPIC-B | P2 | Done |
+| US-024 | Template'y planow (duplikacja) | EPIC-B | P2 | Done |
 
 ## Epics
 

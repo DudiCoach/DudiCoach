@@ -3,10 +3,10 @@
  * These functions hit the Next.js API routes at /api/athletes/*.
  */
 
-import type { Tables } from "@/lib/supabase/database.types";
+import type { Athlete } from "@/lib/data/athlete";
 import type { UpdateAthleteInput } from "@/lib/validation/athlete";
 
-export type Athlete = Tables<"athletes">;
+export type { Athlete };
 
 // ---------------------------------------------------------------------------
 // Query key factory

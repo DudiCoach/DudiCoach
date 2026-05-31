@@ -51,6 +51,7 @@ export const PLAN_MAX_TOKENS = readPlanMaxTokensFromEnv();
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  baseURL: process.env.ANTHROPIC_BASE_URL,
   timeout: ANTHROPIC_TIMEOUT_MS,
 });
 

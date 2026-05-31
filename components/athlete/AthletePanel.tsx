@@ -8,6 +8,7 @@ import { useRealtimeAthlete } from "@/lib/hooks/use-realtime-athlete";
 import type { AthletePublic } from "@/lib/types/athlete-public";
 import type { Injury } from "@/lib/api/injuries";
 import type { PublicTrainingPlan } from "@/lib/types/plan-public";
+import type { SessionFeedback } from "@/lib/data/session-feedback";
 import SyncIndicator from "./SyncIndicator";
 import AthleteProfileView from "./AthleteProfileView";
 import InjuriesPublicSection from "./InjuriesPublicSection";
@@ -18,6 +19,7 @@ interface AthletePanelProps {
   initialData: AthletePublic;
   initialInjuries: Injury[];
   initialPlan: PublicTrainingPlan | null;
+  initialFeedback?: SessionFeedback[];
 }
 
 /**
@@ -31,6 +33,7 @@ export default function AthletePanel({
   initialData,
   initialInjuries,
   initialPlan,
+  initialFeedback = [],
 }: AthletePanelProps) {
   const router = useRouter();
   const [injuries, setInjuries] = useState<Injury[]>(initialInjuries);
@@ -74,7 +77,11 @@ export default function AthletePanel({
         <InjuriesPublicSection injuries={injuries} />
       </div>
       <div className="mt-4">
-        <PlanPublicSection plan={initialPlan} />
+        <PlanPublicSection
+          plan={initialPlan}
+          shareCode={shareCode}
+          initialFeedback={initialFeedback}
+        />
       </div>
 
       <div className="mt-6 flex justify-center">

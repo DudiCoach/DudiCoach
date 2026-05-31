@@ -64,7 +64,7 @@ export default function AthleteCard({ athlete }: AthleteCardProps) {
       </div>
 
       {/* Level badge */}
-      <LevelBadge trainingStartDate={athlete.training_start_date} />
+      <LevelBadge trainingStartDate={athlete.training_start_date ?? null} />
     </div>
   );
 }

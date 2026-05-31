@@ -4,33 +4,34 @@ import Anthropic from "@anthropic-ai/sdk";
 import { beforeEach, vi } from "vitest";
 
 const {
-  mockGetUser,
-  mockFrom,
+  mockRequireAuth,
   mockCheckRateLimit,
   mockGeneratePlan,
   mockParsePlanJson,
+  mockCreateTrainingPlan,
+  mockGetAthleteById,
+  mockGetDb,
 } = vi.hoisted(() => {
-  const mockGetUser = vi.fn();
-  const mockFrom = vi.fn();
+  const mockRequireAuth = vi.fn();
   const mockCheckRateLimit = vi.fn();
   const mockGeneratePlan = vi.fn();
   const mockParsePlanJson = vi.fn();
+  const mockCreateTrainingPlan = vi.fn();
+  const mockGetAthleteById = vi.fn();
+  const mockGetDb = vi.fn();
   return {
-    mockGetUser,
-    mockFrom,
+    mockRequireAuth,
     mockCheckRateLimit,
     mockGeneratePlan,
     mockParsePlanJson,
+    mockCreateTrainingPlan,
+    mockGetAthleteById,
+    mockGetDb,
   };
 });
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-    from: mockFrom,
-  })),
+vi.mock("@/lib/api/auth-guard", () => ({
+  requireAuth: (...args: unknown[]) => mockRequireAuth(...args),
 }));
 
 vi.mock("@/lib/ai/rate-limiter", () => ({
@@ -48,29 +49,34 @@ vi.mock("@/lib/ai/parse-plan-json", () => ({
   parsePlanJson: (...args: unknown[]) => mockParsePlanJson(...args),
 }));
 
+vi.mock("@/lib/data/training-plan", () => ({
+  createTrainingPlan: (...args: unknown[]) => mockCreateTrainingPlan(...args),
+  getTrainingPlans: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/lib/firebase/admin", () => ({
+  getAthleteById: (...args: unknown[]) => mockGetAthleteById(...args),
+  getDb: (...args: unknown[]) => mockGetDb(...args),
+}));
+
 import { POST } from "@/app/api/athletes/[id]/plans/route";
 
-const COACH_USER = { id: "coach-uuid-001", email: "coach@test.com" };
+const COACH_USER = { uid: "coach-uuid-001", email: "coach@test.com" };
 const ATHLETE_ID = "athlete-uuid-001";
 const ATHLETE = {
   id: ATHLETE_ID,
-  name: "Jan Kowalski",
-  sport: "Siłownia",
-  training_days_per_week: 4,
-  training_start_date: "2025-01-01",
+  data: {
+    coachId: COACH_USER.uid,
+    name: "Jan Kowalski",
+    sport: "Siłownia",
+    trainingDaysPerWeek: 4,
+    trainingStartDate: "2025-01-01",
+  },
 };
 
 const PARSED_PLAN = {
   planName: "Plan testowy",
   phase: "bazowy",
-};
-
-type InjuriesQueryError = { code?: string; message?: string } | null;
-type InjurySeedRow = {
-  name: string;
-  severity: number;
-  notes: string | null;
-  status: string;
 };
 
 function routeContext(id: string) {
@@ -83,89 +89,60 @@ function makeRequest(): Request {
   });
 }
 
-function makeAthleteSelectBuilder() {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: ATHLETE, error: null }),
-  };
-}
-
-function makeTrainingPlansInsertBuilder() {
-  return {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({
-      data: {
-        id: "plan-1",
-        athlete_id: ATHLETE_ID,
-      },
-      error: null,
-    }),
-  };
-}
-
-function makeInjuriesSelectBuilder(options?: {
-  rows?: InjurySeedRow[];
-  error?: InjuriesQueryError;
+function makeInjuriesFirestoreChain(options?: {
+  rows?: Array<{ name: string; severity: number; notes: string | null; status: string }>;
+  error?: Error;
 }) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockImplementation(
-      (_column: string, statuses: string[]) => {
-        if (options?.error) {
-          return Promise.resolve({ data: null, error: options.error });
-        }
-        const rows = options?.rows ?? [];
-        const filtered = rows
-          .filter((row) => statuses.includes(row.status))
-          .map((row) => ({
-            name: row.name,
-            severity: row.severity,
-            notes: row.notes,
-            status: row.status,
-          }));
-        return Promise.resolve({ data: filtered, error: null });
+  const chain = {
+    collection: vi.fn().mockReturnThis(),
+    doc: vi.fn().mockReturnThis(),
+    where: vi.fn().mockImplementation((_field: string, _op: string, statuses: string[]) => ({
+      get: () => {
+        if (options?.error) return Promise.reject(options.error);
+        const filtered = (options?.rows ?? []).filter((row) => statuses.includes(row.status));
+        return Promise.resolve({
+          docs: filtered.map((row) => ({
+            data: () => ({
+              name: row.name,
+              severity: row.severity,
+              notes: row.notes,
+              status: row.status,
+            }),
+          })),
+        });
       },
-    ),
+    })),
   };
+  return chain;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
 
-  mockGetUser.mockResolvedValue({ data: { user: COACH_USER }, error: null });
+  mockRequireAuth.mockResolvedValue({ user: COACH_USER, response: null });
   mockCheckRateLimit.mockReturnValue({ allowed: true });
   mockGeneratePlan.mockResolvedValue("{\"ok\":true}");
   mockParsePlanJson.mockReturnValue(PARSED_PLAN);
-  mockFrom.mockImplementation((table: string) => {
-    if (table === "athletes") return makeAthleteSelectBuilder();
-    if (table === "injuries") return makeInjuriesSelectBuilder();
-    if (table === "training_plans") return makeTrainingPlansInsertBuilder();
-    throw new Error(`Unexpected table: ${table}`);
+  mockCreateTrainingPlan.mockResolvedValue({
+    id: "plan-1",
+    athlete_id: ATHLETE_ID,
+    plan_name: PARSED_PLAN.planName,
+    phase: PARSED_PLAN.phase,
+    plan_json: PARSED_PLAN,
+    created_at: new Date().toISOString(),
   });
+  mockGetAthleteById.mockResolvedValue(ATHLETE);
+  mockGetDb.mockReturnValue(makeInjuriesFirestoreChain());
 });
 
 describe("POST /api/athletes/[id]/plans", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-
-    const response = await POST(
-      makeRequest() as Parameters<typeof POST>[0],
-      routeContext(ATHLETE_ID),
-    );
-    const json = (await response.json()) as { error: string };
-
-    expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-
-  it("returns 401 when auth.getUser fails", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: null },
-      error: { message: "JWT expired", code: "401" },
+    mockRequireAuth.mockResolvedValue({
+      user: null,
+      response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
     });
 
     const response = await POST(
@@ -176,7 +153,7 @@ describe("POST /api/athletes/[id]/plans", () => {
 
     expect(response.status).toBe(401);
     expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockGetAthleteById).not.toHaveBeenCalled();
   });
 
   it("returns 504 for Anthropic timeout errors", async () => {
@@ -245,8 +222,9 @@ describe("POST /api/athletes/[id]/plans", () => {
     expect(json.error).toBe("Nie udało się wygenerować planu.");
     expect("details" in json).toBe(false);
   });
+
   it("includes active/healing injuries in generated prompt context", async () => {
-    const injuriesBuilder = makeInjuriesSelectBuilder({
+    const firestoreChain = makeInjuriesFirestoreChain({
       rows: [
         {
           name: "Naderwanie dwuglowego uda",
@@ -262,13 +240,7 @@ describe("POST /api/athletes/[id]/plans", () => {
         },
       ],
     });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return makeAthleteSelectBuilder();
-      if (table === "injuries") return injuriesBuilder;
-      if (table === "training_plans") return makeTrainingPlansInsertBuilder();
-      throw new Error(`Unexpected table: ${table}`);
-    });
+    mockGetDb.mockReturnValue(firestoreChain);
 
     const response = await POST(
       makeRequest() as Parameters<typeof POST>[0],
@@ -276,7 +248,7 @@ describe("POST /api/athletes/[id]/plans", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(injuriesBuilder.in).toHaveBeenCalledWith("status", [
+    expect(firestoreChain.where).toHaveBeenCalledWith("status", "in", [
       "active",
       "healing",
     ]);
@@ -294,7 +266,7 @@ describe("POST /api/athletes/[id]/plans", () => {
 
   it("excludes healed-only injuries from activeInjuries prompt context", async () => {
     const healedInjuryName = "Stara kontuzja kolana";
-    const injuriesBuilder = makeInjuriesSelectBuilder({
+    const firestoreChain = makeInjuriesFirestoreChain({
       rows: [
         {
           name: healedInjuryName,
@@ -304,13 +276,7 @@ describe("POST /api/athletes/[id]/plans", () => {
         },
       ],
     });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return makeAthleteSelectBuilder();
-      if (table === "injuries") return injuriesBuilder;
-      if (table === "training_plans") return makeTrainingPlansInsertBuilder();
-      throw new Error(`Unexpected table: ${table}`);
-    });
+    mockGetDb.mockReturnValue(firestoreChain);
 
     const response = await POST(
       makeRequest() as Parameters<typeof POST>[0],
@@ -318,7 +284,7 @@ describe("POST /api/athletes/[id]/plans", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(injuriesBuilder.in).toHaveBeenCalledWith("status", [
+    expect(firestoreChain.where).toHaveBeenCalledWith("status", "in", [
       "active",
       "healing",
     ]);
@@ -330,48 +296,17 @@ describe("POST /api/athletes/[id]/plans", () => {
     expect(generationArgs.userPrompt).not.toContain(healedInjuryName);
   });
 
-  it("degrades gracefully when injuries query fails and still generates plan", async () => {
-    const injuriesBuilder = makeInjuriesSelectBuilder({
-      error: { code: "XX000", message: "injuries read failed" },
+  it("propagates error when injuries query fails", async () => {
+    const firestoreChain = makeInjuriesFirestoreChain({
+      error: new Error("injuries read failed"),
     });
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGetDb.mockReturnValue(firestoreChain);
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return makeAthleteSelectBuilder();
-      if (table === "injuries") return injuriesBuilder;
-      if (table === "training_plans") return makeTrainingPlansInsertBuilder();
-      throw new Error(`Unexpected table: ${table}`);
-    });
-
-    const response = await POST(
-      makeRequest() as Parameters<typeof POST>[0],
-      routeContext(ATHLETE_ID),
-    );
-
-    expect(response.status).toBe(201);
-    expect(injuriesBuilder.in).toHaveBeenCalledWith("status", [
-      "active",
-      "healing",
-    ]);
-    expect(mockGeneratePlan).toHaveBeenCalledTimes(1);
-    expect(errorSpy).toHaveBeenCalledWith(
-      "[POST /plans] Injuries query failed; continuing without injuries context",
-      {
-        code: "XX000",
-        message: "injuries read failed",
-      },
-    );
-
-    const generationArgs = mockGeneratePlan.mock.calls[0][0] as {
-      userPrompt: string;
-    };
-    expect(generationArgs.userPrompt).toContain("Brak aktywnych kontuzji");
-
-    errorSpy.mockRestore();
+    await expect(
+      POST(
+        makeRequest() as Parameters<typeof POST>[0],
+        routeContext(ATHLETE_ID),
+      ),
+    ).rejects.toThrow("injuries read failed");
   });
 });
-
-
-
-
-

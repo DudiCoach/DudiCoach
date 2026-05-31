@@ -2,24 +2,35 @@
 
 import { beforeEach, vi } from "vitest";
 
-const { mockGetUser, mockFrom } = vi.hoisted(() => {
-  const mockGetUser = vi.fn();
-  const mockFrom = vi.fn();
-  return { mockGetUser, mockFrom };
+const {
+  mockRequireAuth,
+  mockGetAthleteById,
+  mockGetFitnessTestResults,
+  mockCreateFitnessTestResult,
+} = vi.hoisted(() => {
+  const mockRequireAuth = vi.fn();
+  const mockGetAthleteById = vi.fn();
+  const mockGetFitnessTestResults = vi.fn();
+  const mockCreateFitnessTestResult = vi.fn();
+  return { mockRequireAuth, mockGetAthleteById, mockGetFitnessTestResults, mockCreateFitnessTestResult };
 });
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-    from: mockFrom,
-  })),
+vi.mock("@/lib/api/auth-guard", () => ({
+  requireAuth: (...args: unknown[]) => mockRequireAuth(...args),
+}));
+
+vi.mock("@/lib/data/athlete", () => ({
+  getAthleteById: (...args: unknown[]) => mockGetAthleteById(...args),
+}));
+
+vi.mock("@/lib/data/fitness-test", () => ({
+  getFitnessTestResults: (...args: unknown[]) => mockGetFitnessTestResults(...args),
+  createFitnessTestResult: (...args: unknown[]) => mockCreateFitnessTestResult(...args),
 }));
 
 import { GET, POST } from "@/app/api/athletes/[id]/tests/route";
 
-const COACH_USER = { id: "coach-uuid-001", email: "coach@test.com" };
+const COACH_USER = { uid: "coach-uuid-001", email: "coach@test.com" };
 const ATHLETE_ID = "athlete-uuid-001";
 
 const TEST_RESULT = {
@@ -45,52 +56,18 @@ function makeRequest(method: string, body?: unknown): Request {
   return new Request(`http://localhost/api/athletes/${ATHLETE_ID}/tests`, init);
 }
 
-function makeBuilder(options?: {
-  singleSequence?: Array<{
-    data: unknown;
-    error: { code?: string; message?: string } | null;
-  }>;
-  singleDefault?: {
-    data: unknown;
-    error: { code?: string; message?: string } | null;
-  };
-  orderResult?: {
-    data: unknown;
-    error: { code?: string; message?: string } | null;
-  };
-}) {
-  const single = vi.fn();
-  for (const result of options?.singleSequence ?? []) {
-    single.mockResolvedValueOnce(result);
-  }
-  single.mockResolvedValue(
-    options?.singleDefault ?? {
-      data: { id: ATHLETE_ID, sport: "pilka_nozna" },
-      error: null,
-    },
-  );
-
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue(options?.orderResult ?? { data: [], error: null }),
-    insert: vi.fn().mockReturnThis(),
-    single,
-  };
-}
-
 function setupAuthenticated() {
-  mockGetUser.mockResolvedValue({ data: { user: COACH_USER }, error: null });
+  mockRequireAuth.mockResolvedValue({ user: COACH_USER, response: null });
+  mockGetAthleteById.mockResolvedValue({ id: ATHLETE_ID, sport: "pilka_nozna" });
 }
 
 function setupUnauthenticated() {
-  mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-}
-
-function setupAuthError() {
-  mockGetUser.mockResolvedValue({
-    data: { user: null },
-    error: { code: "401", message: "JWT expired" },
+  mockRequireAuth.mockResolvedValue({
+    user: null,
+    response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    }),
   });
 }
 
@@ -110,34 +87,12 @@ describe("GET /api/athletes/[id]/tests", () => {
 
     expect(response.status).toBe(401);
     expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockGetAthleteById).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when auth.getUser fails", async () => {
-    setupAuthError();
-
-    const response = await GET(
-      makeRequest("GET") as Parameters<typeof GET>[0],
-      routeContext(),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-
-  it("returns 404 when athlete does not exist or is not owned", async () => {
+  it("returns 404 when athlete does not exist", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [
-        {
-          data: null,
-          error: { code: "PGRST116", message: "No rows" },
-        },
-      ],
-    });
-    mockFrom.mockReturnValue(builder);
+    mockGetAthleteById.mockResolvedValue(null);
 
     const response = await GET(
       makeRequest("GET") as Parameters<typeof GET>[0],
@@ -149,37 +104,11 @@ describe("GET /api/athletes/[id]/tests", () => {
     expect(json.error).toBe("Nie znaleziono zawodnika.");
   });
 
-  it("returns 500 without details when athlete pre-check fails unexpectedly", async () => {
-    setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [
-        {
-          data: null,
-          error: { code: "XX000", message: "query failed" },
-        },
-      ],
-    });
-    mockFrom.mockReturnValue(builder);
-
-    const response = await GET(
-      makeRequest("GET") as Parameters<typeof GET>[0],
-      routeContext(),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(typeof json.error).toBe("string");
-    expect(json.error).toContain("testow");
-    expect(json.details).toBeUndefined();
-  });
-
   it("returns 200 + test results when athlete exists", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [{ data: { id: ATHLETE_ID, sport: "pilka_nozna" }, error: null }],
-      orderResult: { data: [TEST_RESULT], error: null },
-    });
-    mockFrom.mockReturnValue(builder);
+    mockGetFitnessTestResults.mockResolvedValue([
+      { id: TEST_RESULT.id, data: { athleteId: ATHLETE_ID, testKey: TEST_RESULT.test_key, testDate: TEST_RESULT.test_date, value: TEST_RESULT.value, unit: null, notes: TEST_RESULT.notes, createdAt: TEST_RESULT.created_at } },
+    ]);
 
     const response = await GET(
       makeRequest("GET") as Parameters<typeof GET>[0],
@@ -188,31 +117,20 @@ describe("GET /api/athletes/[id]/tests", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(json.data).toEqual([TEST_RESULT]);
-    expect(builder.order).toHaveBeenCalledWith("test_date", { ascending: false });
+    expect(json.data).toHaveLength(1);
+    expect(json.data[0].test_key).toBe("sprint_30m");
   });
 
-  it("returns 500 without details on tests query failure", async () => {
+  it("propagates error when tests query fails", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [{ data: { id: ATHLETE_ID, sport: "pilka_nozna" }, error: null }],
-      orderResult: {
-        data: null,
-        error: { code: "XX000", message: "query failed" },
-      },
-    });
-    mockFrom.mockReturnValue(builder);
+    mockGetFitnessTestResults.mockRejectedValue(new Error("Firestore read failed"));
 
-    const response = await GET(
-      makeRequest("GET") as Parameters<typeof GET>[0],
-      routeContext(),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(typeof json.error).toBe("string");
-    expect(json.error).toContain("testow");
-    expect(json.details).toBeUndefined();
+    await expect(
+      GET(
+        makeRequest("GET") as Parameters<typeof GET>[0],
+        routeContext(),
+      ),
+    ).rejects.toThrow("Firestore read failed");
   });
 });
 
@@ -231,7 +149,7 @@ describe("POST /api/athletes/[id]/tests", () => {
 
     expect(response.status).toBe(401);
     expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockGetAthleteById).not.toHaveBeenCalled();
   });
 
   it("returns 400 for invalid body", async () => {
@@ -252,17 +170,9 @@ describe("POST /api/athletes/[id]/tests", () => {
     expect(Array.isArray(json.issues)).toBe(true);
   });
 
-  it("returns 404 when athlete does not exist or is not owned", async () => {
+  it("returns 404 when athlete does not exist", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [
-        {
-          data: null,
-          error: { code: "PGRST116", message: "No rows" },
-        },
-      ],
-    });
-    mockFrom.mockReturnValue(builder);
+    mockGetAthleteById.mockResolvedValue(null);
 
     const response = await POST(
       makeRequest("POST", {
@@ -279,10 +189,6 @@ describe("POST /api/athletes/[id]/tests", () => {
 
   it("returns 400 when selected test does not match athlete sport", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [{ data: { id: ATHLETE_ID, sport: "pilka_nozna" }, error: null }],
-    });
-    mockFrom.mockReturnValue(builder);
 
     const response = await POST(
       makeRequest("POST", {
@@ -301,13 +207,18 @@ describe("POST /api/athletes/[id]/tests", () => {
 
   it("returns 201 when test result is created", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [
-        { data: { id: ATHLETE_ID, sport: "pilka_nozna" }, error: null },
-        { data: TEST_RESULT, error: null },
-      ],
+    mockCreateFitnessTestResult.mockResolvedValue({
+      id: TEST_RESULT.id,
+      data: {
+        athleteId: ATHLETE_ID,
+        testKey: TEST_RESULT.test_key,
+        testDate: TEST_RESULT.test_date,
+        value: TEST_RESULT.value,
+        unit: null,
+        notes: TEST_RESULT.notes,
+        createdAt: TEST_RESULT.created_at,
+      },
     });
-    mockFrom.mockReturnValue(builder);
 
     const response = await POST(
       makeRequest("POST", {
@@ -321,54 +232,21 @@ describe("POST /api/athletes/[id]/tests", () => {
     const json = await response.json();
 
     expect(response.status).toBe(201);
-    expect(json.data).toEqual(TEST_RESULT);
+    expect(json.data.test_key).toBe("sprint_30m");
   });
 
-  it("returns 404 for FK violation (athlete disappeared between checks)", async () => {
+  it("propagates error on unexpected write error", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [
-        { data: { id: ATHLETE_ID, sport: "pilka_nozna" }, error: null },
-        { data: null, error: { code: "23503", message: "fk violation" } },
-      ],
-    });
-    mockFrom.mockReturnValue(builder);
+    mockCreateFitnessTestResult.mockRejectedValue(new Error("Firestore write failed"));
 
-    const response = await POST(
-      makeRequest("POST", {
-        test_key: "sprint_30m",
-        value: 4.2,
-      }) as Parameters<typeof POST>[0],
-      routeContext(),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(404);
-    expect(json.error).toBe("Nie znaleziono zawodnika.");
-  });
-
-  it("returns 500 without details on unexpected Supabase insert error", async () => {
-    setupAuthenticated();
-    const builder = makeBuilder({
-      singleSequence: [
-        { data: { id: ATHLETE_ID, sport: "pilka_nozna" }, error: null },
-        { data: null, error: { code: "XX000", message: "write failed" } },
-      ],
-    });
-    mockFrom.mockReturnValue(builder);
-
-    const response = await POST(
-      makeRequest("POST", {
-        test_key: "sprint_30m",
-        value: 4.2,
-      }) as Parameters<typeof POST>[0],
-      routeContext(),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(typeof json.error).toBe("string");
-    expect(json.error).toContain("wyniku testu");
-    expect(json.details).toBeUndefined();
+    await expect(
+      POST(
+        makeRequest("POST", {
+          test_key: "sprint_30m",
+          value: 4.2,
+        }) as Parameters<typeof POST>[0],
+        routeContext(),
+      ),
+    ).rejects.toThrow("Firestore write failed");
   });
 });

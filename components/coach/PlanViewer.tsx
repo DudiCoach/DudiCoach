@@ -7,6 +7,8 @@ import PlanHeader from "./PlanHeader";
 import WeekNavigation from "./WeekNavigation";
 import WeekView from "./WeekView";
 import PlanFooter from "./PlanFooter";
+import ExportPlanButton from "./ExportPlanButton";
+import PlanPrintView from "./PlanPrintView";
 
 interface PlanViewerProps {
   plan: TrainingPlan;
@@ -25,16 +27,25 @@ export default function PlanViewer({ plan }: PlanViewerProps) {
   const week = plan.plan_json.weeks.find((w) => w.weekNumber === activeWeek);
 
   return (
-    <div className="space-y-5">
-      <div className="bg-card border-border rounded-card border p-5">
-        <PlanHeader plan={plan} />
+    <>
+      {/* Print view - only visible when printing */}
+      <PlanPrintView plan={plan} />
+
+      {/* Screen view */}
+      <div className="space-y-5">
+        <div className="bg-card border-border rounded-card border p-5">
+          <div className="flex items-start justify-between">
+            <PlanHeader plan={plan} />
+            <ExportPlanButton />
+          </div>
+        </div>
+
+        <WeekNavigation activeWeek={activeWeek} onWeekChange={setActiveWeek} />
+
+        {week && <WeekView week={week} />}
+
+        <PlanFooter plan={plan.plan_json} />
       </div>
-
-      <WeekNavigation activeWeek={activeWeek} onWeekChange={setActiveWeek} />
-
-      {week && <WeekView week={week} />}
-
-      <PlanFooter plan={plan.plan_json} />
-    </div>
+    </>
   );
 }

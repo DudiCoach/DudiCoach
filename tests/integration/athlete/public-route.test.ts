@@ -2,15 +2,13 @@
 
 import { beforeEach, vi } from "vitest";
 
-const { mockRpc } = vi.hoisted(() => {
-  const mockRpc = vi.fn();
-  return { mockRpc };
+const { mockGetAthleteByShareCode } = vi.hoisted(() => {
+  const mockGetAthleteByShareCode = vi.fn();
+  return { mockGetAthleteByShareCode };
 });
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({
-    rpc: mockRpc,
-  })),
+vi.mock("@/lib/data/athlete", () => ({
+  getAthleteByShareCode: mockGetAthleteByShareCode,
 }));
 
 import { GET } from "@/app/api/athlete/[shareCode]/route";
@@ -33,11 +31,11 @@ describe("GET /api/athlete/[shareCode] (public endpoint)", () => {
 
     expect(response.status).toBe(404);
     expect(json.error).toBe("Not found");
-    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockGetAthleteByShareCode).not.toHaveBeenCalled();
   });
 
   it("valid format but no matching athlete -> 404 (never 401)", async () => {
-    mockRpc.mockResolvedValue({ data: [], error: null });
+    mockGetAthleteByShareCode.mockResolvedValue(null);
 
     const response = await GET(
       new Request("http://localhost/api/athlete/ABC234") as Parameters<typeof GET>[0],
@@ -47,18 +45,18 @@ describe("GET /api/athlete/[shareCode] (public endpoint)", () => {
 
     expect(response.status).toBe(404);
     expect(json.error).toBe("Not found");
-    expect(mockRpc).toHaveBeenCalledWith("get_athlete_by_share_code", {
-      p_code: "ABC234",
-    });
+    expect(mockGetAthleteByShareCode).toHaveBeenCalledWith("ABC234");
   });
 
-  // Test 8 — Page-level guard: inactive share code is rejected by the profile RPC gate.
-  // When the profile RPC returns empty data the route returns 404, preventing any plan
+  // Test 8 — Page-level guard: inactive share code is rejected by the share_active check.
+  // When the athlete lookup returns an inactive athlete the route returns 404, preventing any plan
   // data from being served regardless of whether plans exist for that athlete.
-  it("inactive share code (profile RPC returns empty) -> 404, plan data never served", async () => {
-    // Simulate a share code that exists in the URL but whose share record is inactive
-    // (or was reset). The profile RPC finds no matching active entry.
-    mockRpc.mockResolvedValue({ data: [], error: null });
+  it("inactive share code (athlete share_active=false) -> 404, plan data never served", async () => {
+    mockGetAthleteByShareCode.mockResolvedValue({
+      id: "athlete-123",
+      share_active: false,
+      name: "Test Athlete",
+    });
 
     const response = await GET(
       new Request("http://localhost/api/athlete/DEF234") as Parameters<typeof GET>[0],
@@ -69,10 +67,33 @@ describe("GET /api/athlete/[shareCode] (public endpoint)", () => {
     // Gate must return 404, never expose plan data
     expect(response.status).toBe(404);
     expect(json.error).toBe("Not found");
-    // Profile RPC called exactly once — plan RPC never reached
-    expect(mockRpc).toHaveBeenCalledTimes(1);
-    expect(mockRpc).toHaveBeenCalledWith("get_athlete_by_share_code", {
-      p_code: "DEF234",
+    // Athlete lookup called exactly once
+    expect(mockGetAthleteByShareCode).toHaveBeenCalledTimes(1);
+    expect(mockGetAthleteByShareCode).toHaveBeenCalledWith("DEF234");
+  });
+
+  it("valid share code with active athlete -> 200 with sanitized data", async () => {
+    mockGetAthleteByShareCode.mockResolvedValue({
+      id: "athlete-123",
+      coach_id: "coach-456",
+      name: "John Doe",
+      age: 25,
+      share_code: "ABC234",
+      share_active: true,
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
     });
+
+    const response = await GET(
+      new Request("http://localhost/api/athlete/ABC234") as Parameters<typeof GET>[0],
+      routeContext("ABC234"),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data).toBeDefined();
+    expect(json.data.name).toBe("John Doe");
+    expect(json.data.coach_id).toBeUndefined();
+    expect(json.data.share_code).toBe("ABC234");
   });
 });

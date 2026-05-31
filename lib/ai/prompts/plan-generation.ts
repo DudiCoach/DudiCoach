@@ -1,13 +1,7 @@
-import type { Tables } from "@/lib/supabase/database.types";
 import { pl } from "@/lib/i18n/pl";
-
-type Athlete = Tables<"athletes">;
 
 // ---------------------------------------------------------------------------
 // Athlete context enriched with computed + related fields
-// In v1 injuries/diagnostics/progressions tables don't exist yet (US-010/011/013).
-// The builder accepts empty arrays so the prompt works without those tables,
-// and will flow in seamlessly once those stories ship.
 // ---------------------------------------------------------------------------
 
 export interface InjuryContext {
@@ -31,16 +25,33 @@ export interface ProgressionContext {
   date: string;
 }
 
-export interface AthleteWithContext extends Athlete {
+export interface AthleteWithContext {
+  id: string;
+  coach_id: string;
+  name: string;
+  age?: number | null;
+  weight_kg?: number | null;
+  height_cm?: number | null;
+  sport?: string | null;
+  training_start_date?: string | null;
+  training_days_per_week?: number | null;
+  session_minutes?: number | null;
+  current_phase?: string | null;
+  goal?: string | null;
+  notes?: string | null;
+  share_code: string;
+  share_active: boolean;
+  created_at: string;
+  updated_at: string;
   /** Computed from training_start_date — months of training experience */
   trainingMonths: number;
   /** Derived level label: beginner / intermediate / advanced / elite */
   level: string;
-  /** Active injuries (empty in v1) */
+  /** Active injuries */
   activeInjuries: InjuryContext[];
-  /** FMS diagnostic findings (empty in v1) */
+  /** FMS diagnostic findings */
   diagnosticFindings: DiagnosticContext[];
-  /** Recent progression log entries (empty in v1) */
+  /** Recent progression log entries */
   recentProgressions: ProgressionContext[];
 }
 

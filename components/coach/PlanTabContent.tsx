@@ -292,6 +292,7 @@ export default function PlanTabContent({ athlete }: PlanTabContentProps) {
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <aside aria-label={pl.coach.athlete.tabs.plans}>
             <PlanList
+              athleteId={athlete.id}
               plans={plans}
               selectedId={selectedId}
               onSelect={setUserSelectedId}

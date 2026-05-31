@@ -125,6 +125,7 @@ function makePlan(overrides: Partial<TrainingPlan> = {}): TrainingPlan {
         { weekNumber: 4, focus: "Deload", days: [dayTemplate] },
       ],
     },
+    is_active: true,
     created_at: "2026-04-28T12:00:00Z",
     ...overrides,
   };
@@ -134,7 +135,7 @@ function makeJob(overrides: Partial<PlanGenerationJob> = {}): PlanGenerationJob 
   return {
     id: "job-1",
     athlete_id: "athlete-1",
-    status: "queued",
+    status: "pending",
     attempt_count: 0,
     max_attempts: 3,
     plan_id: null,

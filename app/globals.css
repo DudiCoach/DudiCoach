@@ -72,3 +72,51 @@
     outline-offset: 2px;
   }
 }
+
+/* Print styles for PDF export */
+@media print {
+  /* Hide everything except the print view */
+  body > *:not(.plan-print-view) {
+    display: none !important;
+  }
+
+  /* Show print view */
+  .plan-print-view {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    background: white;
+    color: black;
+  }
+
+  /* Reset colors for print */
+  .plan-print-view * {
+    color: black !important;
+    background: white !important;
+    border-color: #ccc !important;
+  }
+
+  /* Page break settings */
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  /* Table styling for print */
+  .plan-print-view table {
+    border-collapse: collapse;
+  }
+
+  .plan-print-view th,
+  .plan-print-view td {
+    border: 1px solid #ccc;
+    padding: 4px 8px;
+  }
+
+  .plan-print-view th {
+    background-color: #f5f5f5 !important;
+    font-weight: bold;
+  }
+}

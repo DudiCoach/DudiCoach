@@ -4,7 +4,6 @@
  */
 
 import type { TrainingPlanJson } from "@/lib/validation/training-plan";
-import type { Enums } from "@/lib/supabase/database.types";
 
 // ---------------------------------------------------------------------------
 // TrainingPlan type — mirrors the training_plans table row with typed plan_json
@@ -16,10 +15,11 @@ export interface TrainingPlan {
   plan_name: string;
   phase: string | null;
   plan_json: TrainingPlanJson;
+  is_active: boolean;
   created_at: string;
 }
 
-export type PlanJobStatus = Enums<"plan_generation_job_status">;
+export type PlanJobStatus = "pending" | "processing" | "completed" | "succeeded" | "failed" | "cancelled";
 
 export interface PlanGenerationJob {
   id: string;

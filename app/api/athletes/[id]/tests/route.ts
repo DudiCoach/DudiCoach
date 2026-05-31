@@ -1,78 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAuth } from "@/lib/api/auth-guard";
+import { getAthleteById } from "@/lib/data/athlete";
+import {
+  getFitnessTestResults,
+  createFitnessTestResult,
+} from "@/lib/data/fitness-test";
 import {
   isFitnessTestKeyAllowedForSport,
 } from "@/lib/constants/fitness-tests";
 import { SPORTS, type Sport } from "@/lib/constants/sports";
-import { createClient } from "@/lib/supabase/server";
 import { createFitnessTestResultSchema } from "@/lib/validation/fitness-test";
 
 type RouteContext = { params: Promise<{ id: string }> };
-type SupabaseErrorLike = { code?: string; message?: string } | null;
-type AthleteSummary = { id: string; sport: string | null };
 
-const NOT_FOUND_ERROR_CODE = "PGRST116";
 const ATHLETE_NOT_FOUND_ERROR = "Nie znaleziono zawodnika.";
-
-function isNotFoundError(error: SupabaseErrorLike): boolean {
-  return error?.code === NOT_FOUND_ERROR_CODE;
-}
 
 function normalizeSport(value: string | null): Sport | null {
   if (value === null) return null;
   return (SPORTS as readonly string[]).includes(value)
     ? (value as Sport)
     : null;
-}
-
-async function fetchAthleteSummary(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  athleteId: string,
-  routeLabel: string,
-  internalErrorMessage: string,
-): Promise<{ athlete: AthleteSummary; response: null } | { athlete: null; response: NextResponse }> {
-  const { data, error } = await supabase
-    .from("athletes")
-    .select("id, sport")
-    .eq("id", athleteId)
-    .single();
-
-  if (error) {
-    if (isNotFoundError(error)) {
-      return {
-        athlete: null,
-        response: NextResponse.json(
-          { error: ATHLETE_NOT_FOUND_ERROR },
-          { status: 404 },
-        ),
-      };
-    }
-
-    console.error(`[${routeLabel}] failed to verify athlete`, {
-      code: error.code,
-      message: error.message,
-    });
-    return {
-      athlete: null,
-      response: NextResponse.json(
-        { error: internalErrorMessage },
-        { status: 500 },
-      ),
-    };
-  }
-
-  if (!data) {
-    return {
-      athlete: null,
-      response: NextResponse.json(
-        { error: ATHLETE_NOT_FOUND_ERROR },
-        { status: 404 },
-      ),
-    };
-  }
-
-  return { athlete: data, response: null };
 }
 
 /**
@@ -84,57 +32,43 @@ export async function GET(
   { params }: RouteContext,
 ) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const { response } = await requireAuth(
-    supabase,
-    "GET /api/athletes/[id]/tests",
-  );
+  const { response } = await requireAuth("GET /api/athletes/[id]/tests");
   if (response) return response;
 
-  const athleteLookup = await fetchAthleteSummary(
-    supabase,
-    id,
-    "GET /api/athletes/[id]/tests",
-    "Nie udalo sie pobrac wynikow testow.",
-  );
-  if (athleteLookup.response) return athleteLookup.response;
-
-  const { data, error } = await supabase
-    .from("fitness_test_results")
-    .select("*")
-    .eq("athlete_id", id)
-    .order("test_date", { ascending: false });
-
-  if (error) {
-    console.error("[GET /api/athletes/[id]/tests] Supabase error", {
-      code: error.code,
-      message: error.message,
-    });
-    return NextResponse.json(
-      { error: "Nie udalo sie pobrac wynikow testow." },
-      { status: 500 },
-    );
+  const athlete = await getAthleteById(id);
+  if (!athlete) {
+    return NextResponse.json({ error: ATHLETE_NOT_FOUND_ERROR }, { status: 404 });
   }
 
-  return NextResponse.json({ data: data ?? [] });
+  const results = await getFitnessTestResults(id);
+
+  // Map to API shape
+  const data = results.map(({ id: testId, data: r }) => ({
+    id: testId,
+    athlete_id: r.athleteId,
+    test_key: r.testKey,
+    test_date: r.testDate,
+    value: r.value,
+    unit: r.unit,
+    notes: r.notes,
+    created_at: r.createdAt,
+  }));
+
+  return NextResponse.json({ data });
 }
 
 /**
  * POST /api/athletes/[id]/tests
- * Creates one fitness test result row for an athlete owned by authenticated coach.
+ * Creates one fitness test result for an athlete owned by authenticated coach.
  */
 export async function POST(
   request: NextRequest,
   { params }: RouteContext,
 ) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const { response } = await requireAuth(
-    supabase,
-    "POST /api/athletes/[id]/tests",
-  );
+  const { response } = await requireAuth("POST /api/athletes/[id]/tests");
   if (response) return response;
 
   let body: unknown;
@@ -152,15 +86,12 @@ export async function POST(
     );
   }
 
-  const athleteLookup = await fetchAthleteSummary(
-    supabase,
-    id,
-    "POST /api/athletes/[id]/tests",
-    "Nie udalo sie dodac wyniku testu.",
-  );
-  if (athleteLookup.response) return athleteLookup.response;
+  const athlete = await getAthleteById(id);
+  if (!athlete) {
+    return NextResponse.json({ error: ATHLETE_NOT_FOUND_ERROR }, { status: 404 });
+  }
 
-  const athleteSport = normalizeSport(athleteLookup.athlete.sport);
+  const athleteSport = normalizeSport(athlete.sport ?? null);
   const isAllowed = isFitnessTestKeyAllowedForSport(
     parsed.data.test_key,
     athleteSport,
@@ -182,39 +113,29 @@ export async function POST(
     );
   }
 
-  const { data, error } = await supabase
-    .from("fitness_test_results")
-    .insert({
-      athlete_id: id,
-      ...parsed.data,
-    })
-    .select("*")
-    .single();
+  const now = new Date().toISOString();
+  const result = await createFitnessTestResult({
+    athleteId: id,
+    testKey: parsed.data.test_key,
+    testDate: parsed.data.test_date ?? now.split("T")[0],
+    value: parsed.data.value,
+    notes: parsed.data.notes ?? null,
+    createdAt: now,
+  });
 
-  if (error) {
-    if (error.code === "23503") {
-      return NextResponse.json(
-        { error: ATHLETE_NOT_FOUND_ERROR },
-        { status: 404 },
-      );
-    }
-
-    console.error("[POST /api/athletes/[id]/tests] Supabase error", {
-      code: error.code,
-      message: error.message,
-    });
-    return NextResponse.json(
-      { error: "Nie udalo sie dodac wyniku testu." },
-      { status: 500 },
-    );
-  }
-
-  if (!data) {
-    return NextResponse.json(
-      { error: ATHLETE_NOT_FOUND_ERROR },
-      { status: 404 },
-    );
-  }
-
-  return NextResponse.json({ data }, { status: 201 });
+  return NextResponse.json(
+    {
+      data: {
+        id: result.id,
+        athlete_id: id,
+        test_key: result.data.testKey,
+        test_date: result.data.testDate,
+        value: result.data.value,
+        unit: result.data.unit,
+        notes: result.data.notes,
+        created_at: result.data.createdAt,
+      },
+    },
+    { status: 201 },
+  );
 }

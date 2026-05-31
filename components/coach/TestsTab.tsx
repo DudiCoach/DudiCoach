@@ -48,7 +48,7 @@ export default function TestsTab({ athlete }: TestsTabProps) {
   const createMutation = useCreateFitnessTest(athlete.id);
   const deleteMutation = useDeleteFitnessTest(athlete.id);
 
-  const normalizedSport = normalizeSport(athlete.sport);
+  const normalizedSport = normalizeSport(athlete.sport ?? null);
   const availableTests = useMemo(
     () => getFitnessTestsForSport(normalizedSport),
     [normalizedSport],
@@ -127,7 +127,7 @@ export default function TestsTab({ athlete }: TestsTabProps) {
             >
               <TestSelector
                 id="fitness-test-key"
-                sport={athlete.sport}
+                sport={athlete.sport ?? null}
                 value={selectedTestKey ?? firstAvailableTestKey}
                 disabled={isMutating}
                 onChange={(value) =>

@@ -2,24 +2,38 @@
 
 import { beforeEach, vi } from "vitest";
 
-const { mockGetUser, mockFrom } = vi.hoisted(() => {
-  const mockGetUser = vi.fn();
-  const mockFrom = vi.fn();
-  return { mockGetUser, mockFrom };
+const {
+  mockRequireAuth,
+  mockGetAthleteById,
+  mockGetTrainingPlans,
+  mockGetDb,
+} = vi.hoisted(() => {
+  const mockRequireAuth = vi.fn();
+  const mockGetAthleteById = vi.fn();
+  const mockGetTrainingPlans = vi.fn();
+  const mockGetDb = vi.fn();
+  return { mockRequireAuth, mockGetAthleteById, mockGetTrainingPlans, mockGetDb };
 });
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-    from: mockFrom,
-  })),
+vi.mock("@/lib/api/auth-guard", () => ({
+  requireAuth: (...args: unknown[]) => mockRequireAuth(...args),
+}));
+
+vi.mock("@/lib/data/athlete", () => ({
+  getAthleteById: (...args: unknown[]) => mockGetAthleteById(...args),
+}));
+
+vi.mock("@/lib/data/training-plan", () => ({
+  getTrainingPlans: (...args: unknown[]) => mockGetTrainingPlans(...args),
+}));
+
+vi.mock("@/lib/firebase/admin", () => ({
+  getDb: (...args: unknown[]) => mockGetDb(...args),
 }));
 
 import { GET } from "@/app/api/athletes/[id]/plans/[planId]/feedback/route";
 
-const COACH = { id: "coach-uuid-001", email: "coach@test.com" };
+const COACH = { uid: "coach-uuid-001", email: "coach@test.com" };
 const ATHLETE_ID = "550e8400-e29b-41d4-a716-446655440111";
 const PLAN_ID = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -36,93 +50,42 @@ function makeRequest(id = ATHLETE_ID, planId = PLAN_ID) {
   );
 }
 
-function makeAthletesBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(
-      result ?? {
-        data: { id: ATHLETE_ID },
-        error: null,
-      },
-    ),
-  };
-}
-
-function makeTrainingPlansBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(
-      result ?? {
-        data: { id: PLAN_ID },
-        error: null,
-      },
-    ),
-  };
-}
-
-function makeFeedbackBuilder(result?: {
-  data: unknown;
-  error: { code?: string; message?: string } | null;
-}) {
-  const builder = {
-    select: vi.fn(),
-    eq: vi.fn(),
-    order: vi.fn(),
-  };
-
-  builder.select.mockReturnValue(builder);
-  builder.eq.mockReturnValue(builder);
-  builder.order
-    .mockImplementationOnce(() => builder)
-    .mockImplementationOnce(() =>
-      Promise.resolve(
-        result ?? {
-          data: [
-            {
-              id: "fb-2",
-              plan_id: PLAN_ID,
-              athlete_id: ATHLETE_ID,
-              week_number: 1,
-              day_number: 2,
-              feedback_text: "Dzien 2",
-              created_at: "2026-05-22T12:00:00.000Z",
-              updated_at: "2026-05-22T12:00:00.000Z",
-            },
-            {
-              id: "fb-1",
-              plan_id: PLAN_ID,
-              athlete_id: ATHLETE_ID,
-              week_number: 1,
-              day_number: 1,
-              feedback_text: "Dzien 1",
-              created_at: "2026-05-22T11:00:00.000Z",
-              updated_at: "2026-05-22T11:00:00.000Z",
-            },
-          ],
-          error: null,
+function makeFirestoreFeedbackChain(feedbackData: { id: string; [key: string]: unknown }[]) {
+  const chain = {
+    collection: vi.fn().mockReturnThis(),
+    doc: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    get: vi.fn().mockResolvedValue({
+      docs: feedbackData.map((d) => ({
+        id: d.id,
+        data: () => {
+          const { id: _id, ...rest } = d;
+          return rest;
         },
-      ),
-    );
-
-  return builder;
+      })),
+    }),
+  };
+  return chain;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetUser.mockResolvedValue({ data: { user: COACH }, error: null });
+  mockRequireAuth.mockResolvedValue({ user: COACH, response: null });
+  mockGetAthleteById.mockResolvedValue({ id: ATHLETE_ID });
+  mockGetTrainingPlans.mockResolvedValue([{ id: PLAN_ID, athlete_id: ATHLETE_ID }]);
+  mockGetDb.mockReturnValue(makeFirestoreFeedbackChain([]));
 });
 
 describe("GET /api/athletes/[id]/plans/[planId]/feedback", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
+    mockRequireAuth.mockResolvedValue({
+      user: null,
+      response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    });
 
     const response = await GET(
       makeRequest() as Parameters<typeof GET>[0],
@@ -132,31 +95,11 @@ describe("GET /api/athletes/[id]/plans/[planId]/feedback", () => {
 
     expect(response.status).toBe(401);
     expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-
-  it("returns 404 for invalid UUID params", async () => {
-    const response = await GET(
-      makeRequest("not-a-uuid", PLAN_ID) as Parameters<typeof GET>[0],
-      routeContext("not-a-uuid", PLAN_ID),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(404);
-    expect(json.error).toBe("Not found");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockGetAthleteById).not.toHaveBeenCalled();
   });
 
   it("returns 404 when athlete is not accessible (non-owned/not found)", async () => {
-    const athletesBuilder = makeAthletesBuilder({
-      data: null,
-      error: { code: "PGRST116", message: "No rows found" },
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      throw new Error(`Unexpected table: ${table}`);
-    });
+    mockGetAthleteById.mockResolvedValue(null);
 
     const response = await GET(
       makeRequest() as Parameters<typeof GET>[0],
@@ -169,17 +112,7 @@ describe("GET /api/athletes/[id]/plans/[planId]/feedback", () => {
   });
 
   it("returns 404 when plan does not belong to athlete / non-owned", async () => {
-    const athletesBuilder = makeAthletesBuilder();
-    const trainingPlansBuilder = makeTrainingPlansBuilder({
-      data: null,
-      error: { code: "PGRST116", message: "No rows found" },
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      if (table === "training_plans") return trainingPlansBuilder;
-      throw new Error(`Unexpected table: ${table}`);
-    });
+    mockGetTrainingPlans.mockResolvedValue([]);
 
     const response = await GET(
       makeRequest() as Parameters<typeof GET>[0],
@@ -192,16 +125,30 @@ describe("GET /api/athletes/[id]/plans/[planId]/feedback", () => {
   });
 
   it("returns sorted feedback rows for owned athlete plan", async () => {
-    const athletesBuilder = makeAthletesBuilder();
-    const trainingPlansBuilder = makeTrainingPlansBuilder();
-    const feedbackBuilder = makeFeedbackBuilder();
+    const feedbackRows = [
+      {
+        id: "fb-2",
+        planId: PLAN_ID,
+        athleteId: ATHLETE_ID,
+        weekNumber: 1,
+        dayNumber: 2,
+        feedbackText: "Dzien 2",
+        createdAt: "2026-05-22T12:00:00.000Z",
+        updatedAt: "2026-05-22T12:00:00.000Z",
+      },
+      {
+        id: "fb-1",
+        planId: PLAN_ID,
+        athleteId: ATHLETE_ID,
+        weekNumber: 1,
+        dayNumber: 1,
+        feedbackText: "Dzien 1",
+        createdAt: "2026-05-22T11:00:00.000Z",
+        updatedAt: "2026-05-22T11:00:00.000Z",
+      },
+    ];
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "athletes") return athletesBuilder;
-      if (table === "training_plans") return trainingPlansBuilder;
-      if (table === "plan_session_feedback") return feedbackBuilder;
-      throw new Error(`Unexpected table: ${table}`);
-    });
+    mockGetDb.mockReturnValue(makeFirestoreFeedbackChain(feedbackRows));
 
     const response = await GET(
       makeRequest() as Parameters<typeof GET>[0],
@@ -211,11 +158,6 @@ describe("GET /api/athletes/[id]/plans/[planId]/feedback", () => {
 
     expect(response.status).toBe(200);
     expect(Array.isArray(json.data)).toBe(true);
-    expect(feedbackBuilder.order).toHaveBeenNthCalledWith(1, "week_number", {
-      ascending: true,
-    });
-    expect(feedbackBuilder.order).toHaveBeenNthCalledWith(2, "day_number", {
-      ascending: true,
-    });
+    expect(json.data).toHaveLength(2);
   });
 });

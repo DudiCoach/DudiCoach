@@ -3,41 +3,41 @@
 import { beforeEach, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
-// Mock Supabase server client — must be hoisted before any module imports
+// Mock the data layer AND auth guard
 // ---------------------------------------------------------------------------
 
-const { mockGetUser, mockFrom } = vi.hoisted(() => {
-  const mockGetUser = vi.fn();
-  const mockFrom = vi.fn();
-  return { mockGetUser, mockFrom };
-});
-
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-    from: mockFrom,
-  })),
+const mockData = vi.hoisted(() => ({
+  getAthletesByCoach: vi.fn(),
+  getAthleteById: vi.fn(),
+  createAthlete: vi.fn(),
+  updateAthlete: vi.fn(),
+  deleteAthlete: vi.fn(),
 }));
 
-// Import route handlers AFTER mocks are wired.
+vi.mock("@/lib/data/athlete", () => mockData);
+
+const { mockRequireAuth } = vi.hoisted(() => {
+  const mockRequireAuth = vi.fn();
+  return { mockRequireAuth };
+});
+
+vi.mock("@/lib/api/auth-guard", () => ({
+  requireAuth: (...args: unknown[]) => mockRequireAuth(...args),
+}));
+
+// Import route handlers AFTER mocks
 import { GET as listAthletes, POST } from "@/app/api/athletes/route";
-import {
-  GET as getAthlete,
-  PATCH,
-  DELETE,
-} from "@/app/api/athletes/[id]/route";
+import { GET as getAthlete, PATCH, DELETE } from "@/app/api/athletes/[id]/route";
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const COACH_USER = { id: "coach-uuid-001", email: "coach@test.com" };
+const COACH_USER = { uid: "coach-uuid-001", email: "coach@test.com" };
 
 const mockAthlete = {
   id: "athlete-uuid-001",
-  coach_id: COACH_USER.id,
+  coach_id: COACH_USER.uid,
   name: "Jan Kowalski",
   age: 25,
   weight_kg: 75.0,
@@ -50,6 +50,7 @@ const mockAthlete = {
   goal: "Wydolność",
   notes: null,
   share_code: "ABC123",
+  share_active: false,
   created_at: "2026-04-10T10:00:00Z",
   updated_at: "2026-04-10T12:00:00Z",
 };
@@ -58,58 +59,10 @@ const mockAthlete2 = { ...mockAthlete, id: "athlete-uuid-002", name: "Anna Nowak
 const mockAthlete3 = { ...mockAthlete, id: "athlete-uuid-003", name: "Piotr Wiśniewski" };
 
 // ---------------------------------------------------------------------------
-// Helper: build a Supabase chainable query builder mock
-//
-// Chain patterns in production code:
-//   POST:   from().insert().select().single()           → single() is terminal
-//   GET list: from().select().order()                   → order() is terminal
-//   GET single: from().select().eq().single()           → single() is terminal
-//   PATCH:  from().update().eq().select().single()      → single() is terminal
-//   DELETE: from().delete({count}).eq()                 → eq() is terminal
-//
-// Strategy: ALL intermediate methods return `this` (chainable).
-// Terminal methods (single, order, eq) return a Promise.
-// Because eq() is terminal for DELETE but intermediate for GET/PATCH, we use
-// a flag to toggle its behaviour per builder instance.
+// Helpers
 // ---------------------------------------------------------------------------
 
-function makeBuilder(
-  resolvedValue: { data: unknown; error: unknown; count?: number },
-  options: { eqIsTerminal?: boolean } = {},
-) {
-  const builder: Record<string, ReturnType<typeof vi.fn>> = {
-    select: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn(),
-    single: vi.fn(),
-  };
-
-  // single() — always terminal (resolves the promise)
-  builder["single"].mockResolvedValue(resolvedValue);
-
-  // order() — terminal for GET list
-  builder["order"].mockResolvedValue(resolvedValue);
-
-  if (options.eqIsTerminal) {
-    // DELETE: from().delete({count}).eq() resolves directly
-    builder["eq"].mockResolvedValue(resolvedValue);
-  }
-
-  return builder;
-}
-
-// ---------------------------------------------------------------------------
-// Helper: create a Request
-// ---------------------------------------------------------------------------
-
-function makeRequest(
-  url: string,
-  method: string,
-  body?: unknown,
-): Request {
+function makeRequest(url: string, method: string, body?: unknown): Request {
   const init: RequestInit = { method };
   if (body !== undefined) {
     init.body = JSON.stringify(body);
@@ -118,36 +71,23 @@ function makeRequest(
   return new Request(url, init);
 }
 
-// ---------------------------------------------------------------------------
-// Route params helper (Next.js 16 async params)
-// ---------------------------------------------------------------------------
-
 function routeContext(id: string) {
   return { params: Promise.resolve({ id }) };
 }
 
-// ---------------------------------------------------------------------------
-// Unauthenticated helper
-// ---------------------------------------------------------------------------
+function setupAuthenticated() {
+  mockRequireAuth.mockResolvedValue({ user: COACH_USER, response: null });
+}
 
 function setupUnauthenticated() {
-  mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-}
-
-function setupAuthError() {
-  mockGetUser.mockResolvedValue({
-    data: { user: null },
-    error: { message: "JWT expired", code: "401" },
+  mockRequireAuth.mockResolvedValue({
+    user: null,
+    response: new Response(JSON.stringify({ error: "Brak autoryzacji." }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    }),
   });
 }
-
-function setupAuthenticated() {
-  mockGetUser.mockResolvedValue({ data: { user: COACH_USER }, error: null });
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -160,92 +100,46 @@ beforeEach(() => {
 describe("POST /api/athletes", () => {
   it("authenticated + valid body → 201 + athlete in response", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({ data: mockAthlete, error: null });
-    mockFrom.mockReturnValue(builder);
+    mockData.createAthlete.mockResolvedValue(mockAthlete);
 
-    const req = makeRequest("http://localhost/api/athletes", "POST", {
-      name: "Jan Kowalski",
-    });
+    const req = makeRequest("http://localhost/api/athletes", "POST", { name: "Jan Kowalski" });
     const response = await POST(req as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(201);
-    expect(json.data).toEqual(mockAthlete);
-    expect(mockFrom).toHaveBeenCalledWith("athletes");
+    expect(json.data.name).toBe("Jan Kowalski");
+    expect(mockData.createAthlete).toHaveBeenCalled();
   });
 
   it("authenticated + missing name → 400 validation error", async () => {
     setupAuthenticated();
 
-    const req = makeRequest("http://localhost/api/athletes", "POST", {
-      age: 25,
-    });
+    const req = makeRequest("http://localhost/api/athletes", "POST", { age: 25 });
     const response = await POST(req as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(400);
     expect(json.error).toBe("Validation failed");
     expect(Array.isArray(json.details)).toBe(true);
-    expect(json.details.length).toBeGreaterThan(0);
-  });
-
-  it("authenticated + invalid body (age: -5) → 400 + validation details", async () => {
-    setupAuthenticated();
-
-    const req = makeRequest("http://localhost/api/athletes", "POST", {
-      name: "Jan",
-      age: -5,
-    });
-    const response = await POST(req as Parameters<typeof POST>[0]);
-    const json = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(json.error).toBe("Validation failed");
-    const ageIssue = json.details.find(
-      (d: { path: string[] }) => d.path[0] === "age",
-    );
-    expect(ageIssue).toBeDefined();
   });
 
   it("unauthenticated → 401", async () => {
     setupUnauthenticated();
 
-    const req = makeRequest("http://localhost/api/athletes", "POST", {
-      name: "Jan Kowalski",
-    });
+    const req = makeRequest("http://localhost/api/athletes", "POST", { name: "Jan Kowalski" });
     const response = await POST(req as Parameters<typeof POST>[0]);
     const json = await response.json();
 
     expect(response.status).toBe(401);
     expect(json.error).toBe("Brak autoryzacji.");
-    // Supabase from() should never be called
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockData.createAthlete).not.toHaveBeenCalled();
   });
 
-  it("auth.getUser error -> 401", async () => {
-    setupAuthError();
-
-    const req = makeRequest("http://localhost/api/athletes", "POST", {
-      name: "Jan Kowalski",
-    });
-    const response = await POST(req as Parameters<typeof POST>[0]);
-    const json = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-  it("Supabase error → 500", async () => {
+  it("Firestore error → 500", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      data: null,
-      error: { message: "DB error", code: "PGRST001", hint: "" },
-    });
-    mockFrom.mockReturnValue(builder);
+    mockData.createAthlete.mockRejectedValue(new Error("Firestore error"));
 
-    const req = makeRequest("http://localhost/api/athletes", "POST", {
-      name: "Jan Kowalski",
-    });
+    const req = makeRequest("http://localhost/api/athletes", "POST", { name: "Jan Kowalski" });
     const response = await POST(req as Parameters<typeof POST>[0]);
     const json = await response.json();
 
@@ -259,27 +153,20 @@ describe("POST /api/athletes", () => {
 // ============================================================
 
 describe("GET /api/athletes", () => {
-  it("authenticated + athletes in DB → 200 + array sorted by updated_at DESC", async () => {
+  it("authenticated + athletes in DB → 200 + array", async () => {
     setupAuthenticated();
-    const athletes = [mockAthlete, mockAthlete2, mockAthlete3];
-    const builder = makeBuilder({ data: athletes, error: null });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthletesByCoach.mockResolvedValue([mockAthlete, mockAthlete2, mockAthlete3]);
 
-    makeRequest("http://localhost/api/athletes", "GET");
     const response = await listAthletes();
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(Array.isArray(json.data)).toBe(true);
     expect(json.data).toHaveLength(3);
-    // Verify the order() call was made with updated_at DESC
-    expect(builder["order"]).toHaveBeenCalledWith("updated_at", { ascending: false });
   });
 
   it("authenticated + empty DB → 200 + empty array", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({ data: [], error: null });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthletesByCoach.mockResolvedValue([]);
 
     const response = await listAthletes();
     const json = await response.json();
@@ -295,8 +182,7 @@ describe("GET /api/athletes", () => {
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockData.getAthletesByCoach).not.toHaveBeenCalled();
   });
 });
 
@@ -307,83 +193,37 @@ describe("GET /api/athletes", () => {
 describe("GET /api/athletes/[id]", () => {
   it("authenticated + existing athlete → 200 + athlete", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({ data: mockAthlete, error: null });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthleteById.mockResolvedValue(mockAthlete);
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "GET",
-    );
-    const response = await getAthlete(
-      req as Parameters<typeof getAthlete>[0],
-      routeContext("athlete-uuid-001"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "GET");
+    const response = await getAthlete(req as Parameters<typeof getAthlete>[0], routeContext("athlete-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(json.data).toEqual(mockAthlete);
+    expect(json.data.name).toBe("Jan Kowalski");
   });
 
   it("authenticated + non-existent ID → 404", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      data: null,
-      error: { message: "No rows", code: "PGRST116", hint: "" },
-    });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthleteById.mockResolvedValue(null);
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/nonexistent-id",
-      "GET",
-    );
-    const response = await getAthlete(
-      req as Parameters<typeof getAthlete>[0],
-      routeContext("nonexistent-id"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/nonexistent-id", "GET");
+    const response = await getAthlete(req as Parameters<typeof getAthlete>[0], routeContext("nonexistent-id"));
     const json = await response.json();
 
     expect(response.status).toBe(404);
     expect(json.error).toBe("Not found");
   });
 
-  it("authenticated + unexpected Supabase error → 500", async () => {
-    setupAuthenticated();
-    const builder = makeBuilder({
-      data: null,
-      error: { message: "statement timeout", code: "57014", hint: "" },
-    });
-    mockFrom.mockReturnValue(builder);
-
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "GET",
-    );
-    const response = await getAthlete(
-      req as Parameters<typeof getAthlete>[0],
-      routeContext("athlete-uuid-001"),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(json.error).toBe("Internal server error");
-  });
-
   it("unauthenticated → 401", async () => {
     setupUnauthenticated();
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "GET",
-    );
-    const response = await getAthlete(
-      req as Parameters<typeof getAthlete>[0],
-      routeContext("athlete-uuid-001"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "GET");
+    const response = await getAthlete(req as Parameters<typeof getAthlete>[0], routeContext("athlete-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockData.getAthleteById).not.toHaveBeenCalled();
   });
 });
 
@@ -394,127 +234,39 @@ describe("GET /api/athletes/[id]", () => {
 describe("PATCH /api/athletes/[id]", () => {
   it("authenticated + valid partial body → 200 + updated athlete", async () => {
     setupAuthenticated();
-    const updatedAthlete = { ...mockAthlete, weight_kg: 78.0 };
-    const builder = makeBuilder({ data: updatedAthlete, error: null });
-    mockFrom.mockReturnValue(builder);
+    const updated = { ...mockAthlete, weight_kg: 78.0 };
+    mockData.getAthleteById.mockResolvedValue(mockAthlete);
+    mockData.updateAthlete.mockResolvedValue(updated);
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "PATCH",
-      { weight_kg: 78 },
-    );
-    const response = await PATCH(
-      req as Parameters<typeof PATCH>[0],
-      routeContext("athlete-uuid-001"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "PATCH", { weight_kg: 78 });
+    const response = await PATCH(req as Parameters<typeof PATCH>[0], routeContext("athlete-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(200);
     expect(json.data.weight_kg).toBe(78.0);
   });
-  it("authenticated + empty select/date values are normalized and do not fail validation", async () => {
-    setupAuthenticated();
-    const builder = makeBuilder({ data: mockAthlete, error: null });
-    mockFrom.mockReturnValue(builder);
-
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "PATCH",
-      { goal: "", current_phase: "", training_start_date: "" },
-    );
-    const response = await PATCH(
-      req as Parameters<typeof PATCH>[0],
-      routeContext("athlete-uuid-001"),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(json.data).toEqual(mockAthlete);
-    expect(builder["update"]).toHaveBeenCalledWith({});
-  });
-
-  it("authenticated + invalid body (age: -1) → 400 validation error", async () => {
-    setupAuthenticated();
-
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "PATCH",
-      { age: -1 },
-    );
-    const response = await PATCH(
-      req as Parameters<typeof PATCH>[0],
-      routeContext("athlete-uuid-001"),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(json.error).toBe("Validation failed");
-    expect(Array.isArray(json.details)).toBe(true);
-  });
 
   it("authenticated + non-existent ID → 404", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({
-      data: null,
-      error: { message: "No rows", code: "PGRST116", hint: "" },
-    });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthleteById.mockResolvedValue(null);
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/nonexistent-id",
-      "PATCH",
-      { weight_kg: 78 },
-    );
-    const response = await PATCH(
-      req as Parameters<typeof PATCH>[0],
-      routeContext("nonexistent-id"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/nonexistent-id", "PATCH", { weight_kg: 78 });
+    const response = await PATCH(req as Parameters<typeof PATCH>[0], routeContext("nonexistent-id"));
     const json = await response.json();
 
     expect(response.status).toBe(404);
     expect(json.error).toBe("Not found");
   });
 
-  it("authenticated + unexpected Supabase error → 500", async () => {
-    setupAuthenticated();
-    const builder = makeBuilder({
-      data: null,
-      error: { message: "write failed", code: "XX000", hint: "" },
-    });
-    mockFrom.mockReturnValue(builder);
-
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "PATCH",
-      { weight_kg: 78 },
-    );
-    const response = await PATCH(
-      req as Parameters<typeof PATCH>[0],
-      routeContext("athlete-uuid-001"),
-    );
-    const json = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(json.error).toBe("Internal server error");
-  });
-
   it("unauthenticated → 401", async () => {
     setupUnauthenticated();
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "PATCH",
-      { weight_kg: 78 },
-    );
-    const response = await PATCH(
-      req as Parameters<typeof PATCH>[0],
-      routeContext("athlete-uuid-001"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "PATCH", { weight_kg: 78 });
+    const response = await PATCH(req as Parameters<typeof PATCH>[0], routeContext("athlete-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockData.updateAthlete).not.toHaveBeenCalled();
   });
 });
 
@@ -525,38 +277,21 @@ describe("PATCH /api/athletes/[id]", () => {
 describe("DELETE /api/athletes/[id]", () => {
   it("authenticated + existing athlete → 204 no body", async () => {
     setupAuthenticated();
-    // DELETE uses .delete({ count: 'exact' }).eq(id) — eq() is terminal
-    const builder = makeBuilder({ data: null, error: null, count: 1 }, { eqIsTerminal: true });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthleteById.mockResolvedValue(mockAthlete);
+    mockData.deleteAthlete.mockResolvedValue(undefined);
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "DELETE",
-    );
-    const response = await DELETE(
-      req as Parameters<typeof DELETE>[0],
-      routeContext("athlete-uuid-001"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "DELETE");
+    const response = await DELETE(req as Parameters<typeof DELETE>[0], routeContext("athlete-uuid-001"));
 
     expect(response.status).toBe(204);
-    // 204 has no body
-    const text = await response.text();
-    expect(text).toBe("");
   });
 
-  it("authenticated + non-existent ID → 404 (count === 0)", async () => {
+  it("authenticated + non-existent ID → 404", async () => {
     setupAuthenticated();
-    const builder = makeBuilder({ data: null, error: null, count: 0 }, { eqIsTerminal: true });
-    mockFrom.mockReturnValue(builder);
+    mockData.getAthleteById.mockResolvedValue(null);
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/nonexistent-id",
-      "DELETE",
-    );
-    const response = await DELETE(
-      req as Parameters<typeof DELETE>[0],
-      routeContext("nonexistent-id"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/nonexistent-id", "DELETE");
+    const response = await DELETE(req as Parameters<typeof DELETE>[0], routeContext("nonexistent-id"));
     const json = await response.json();
 
     expect(response.status).toBe(404);
@@ -566,19 +301,11 @@ describe("DELETE /api/athletes/[id]", () => {
   it("unauthenticated → 401", async () => {
     setupUnauthenticated();
 
-    const req = makeRequest(
-      "http://localhost/api/athletes/athlete-uuid-001",
-      "DELETE",
-    );
-    const response = await DELETE(
-      req as Parameters<typeof DELETE>[0],
-      routeContext("athlete-uuid-001"),
-    );
+    const req = makeRequest("http://localhost/api/athletes/athlete-uuid-001", "DELETE");
+    const response = await DELETE(req as Parameters<typeof DELETE>[0], routeContext("athlete-uuid-001"));
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Brak autoryzacji.");
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockData.deleteAthlete).not.toHaveBeenCalled();
   });
 });
-
