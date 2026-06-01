@@ -9,7 +9,10 @@
     "rewrites": [
       {
         "source": "**",
-        "function": "ssr"
+        "function": {
+          "functionId": "ssr",
+          "pinTag": true
+        }
       }
     ],
     "headers": [
