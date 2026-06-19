@@ -4,18 +4,18 @@
   /* Fonts */
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
-  /* DudiCoach dark theme — brand colors */
-  --color-background: #0a0f1a;
-  --color-card: #111827;
-  --color-border: #1e293b;
-  --color-input: #1a2236;
-  --color-muted: #64748b;
-  --color-foreground: #f1f5f9;
-  --color-muted-foreground: #94a3b8;
+  /* Dudi Coach graphite theme */
+  --color-background: #16191e;
+  --color-card: #161a1f;
+  --color-border: #34383f;
+  --color-input: #1e2228;
+  --color-muted: #262a31;
+  --color-foreground: #d2cdb9;
+  --color-muted-foreground: #a6a08d;
 
   /* Accent colors */
-  --color-primary: #22d3ee; /* cyan — główny */
-  --color-primary-foreground: #0a0f1a;
+  --color-primary: #c59382;
+  --color-primary-foreground: #16191e;
   --color-success: #34d399; /* green */
   --color-destructive: #f87171; /* red — błąd/kontuzja */
   --color-warning: #fb923c; /* orange — diagnostyka */
@@ -23,9 +23,9 @@
   --color-yellow: #fbbf24; /* progresje */
 
   /* Radii */
-  --radius-card: 10px;
+  --radius-card: 8px;
   --radius-input: 6px;
-  --radius-pill: 20px;
+  --radius-pill: 999px;
 }
 
 @layer base {
@@ -43,6 +43,8 @@
 
   body {
     min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
   }
 
   /* Form elements — dark inputs */
