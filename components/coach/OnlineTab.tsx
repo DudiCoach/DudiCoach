@@ -40,7 +40,10 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
     ? localShareState.shareCode
     : athlete.share_code;
 
-  function onMutationSuccess(data: { share_active: boolean; share_code: string }) {
+  function onMutationSuccess(data: {
+    share_active: boolean;
+    share_code: string;
+  }) {
     setLocalShareState({
       athleteId: athlete.id,
       shareActive: data.share_active,
@@ -81,15 +84,15 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
   }
 
   return (
-    <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-card)] p-6">
+    <div className="rounded-card border border-border bg-card p-6">
       {!shareActive ? (
         /* State A: sharing inactive */
         <div className="space-y-4">
           <div>
-            <h2 className="text-base font-semibold text-[var(--color-foreground)]">
+            <h2 className="text-base font-semibold text-foreground">
               {pl.coach.athlete.online.inactiveTitle}
             </h2>
-            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+            <p className="mt-1 text-sm text-muted-foreground">
               {pl.coach.athlete.online.inactiveHint}
             </p>
           </div>
@@ -98,7 +101,7 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
             type="button"
             disabled={anyPending}
             onClick={() => activateMutation.mutate()}
-            className="rounded-[6px] bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary-foreground)] transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="rounded-input bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {activateMutation.isPending
               ? pl.coach.athlete.online.activating
@@ -110,7 +113,7 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
         <div className="space-y-6">
           {/* Share code */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-[var(--color-muted-foreground)]">
+            <p className="text-sm font-medium text-muted-foreground">
               {pl.coach.athlete.online.accessCodeLabel}
             </p>
             <ShareCodeDisplay code={shareCode} />
@@ -118,7 +121,7 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
 
           {/* Share link */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-[var(--color-muted-foreground)]">
+            <p className="text-sm font-medium text-muted-foreground">
               {pl.coach.athlete.online.accessLinkLabel}
             </p>
             <ShareLink shareCode={shareCode} />
@@ -130,7 +133,7 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
               type="button"
               disabled={anyPending}
               onClick={() => deactivateMutation.mutate()}
-              className="rounded-[6px] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-destructive)] hover:text-[var(--color-destructive)] disabled:opacity-50"
+              className="rounded-input border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50"
             >
               {deactivateMutation.isPending
                 ? pl.coach.athlete.online.deactivating
@@ -141,7 +144,7 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
               type="button"
               disabled={anyPending}
               onClick={handleReset}
-              className="rounded-[6px] border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-warning)] hover:text-[var(--color-warning)] disabled:opacity-50"
+              className="rounded-input border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-warning hover:text-warning disabled:opacity-50"
             >
               {resetMutation.isPending
                 ? pl.coach.athlete.online.resetting
@@ -153,10 +156,7 @@ export default function OnlineTab({ athlete }: OnlineTabProps) {
 
       {/* Error feedback */}
       {anyError && (
-        <p
-          role="alert"
-          className="mt-4 text-sm text-[var(--color-destructive)]"
-        >
+        <p role="alert" className="mt-4 text-sm text-destructive">
           {pl.coach.athlete.online.errorGeneric}
         </p>
       )}

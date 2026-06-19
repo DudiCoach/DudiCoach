@@ -1,0 +1,23 @@
+{
+  "name": "Dudi Coach",
+  "short_name": "Dudi Coach",
+  "description": "Profesjonalna aplikacja dla trenera personalnego do zarzadzania zawodnikami i planami treningowymi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#16191E",
+  "theme_color": "#16191E",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

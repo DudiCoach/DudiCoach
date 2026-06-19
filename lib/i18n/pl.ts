@@ -1,5 +1,5 @@
 /**
- * Central dictionary of Polish UI strings for DudiCoach.
+ * Central dictionary of Polish UI strings for Dudi Coach.
  *
  * RULE: Every user-facing string MUST come from this file.
  * NEVER hardcode Polish in components.
@@ -27,7 +27,7 @@ export const pl = {
   },
 
   home: {
-    title: "DudiCoach",
+    title: "Dudi Coach",
     description:
       "Profesjonalne zarządzanie zawodnikami i generowanie planów treningowych z wykorzystaniem AI.",
     coachLoginCta: "Logowanie trenera",

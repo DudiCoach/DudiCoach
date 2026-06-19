@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DudiCoachWordmark } from "@/components/brand/DudiCoachBrand";
 import { pl } from "@/lib/i18n/pl";
 import { useRealtimeAthlete } from "@/lib/hooks/use-realtime-athlete";
 import type { AthletePublic } from "@/lib/types/athlete-public";
@@ -63,9 +64,12 @@ export default function AthletePanel({
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <header className="mb-5 flex items-center justify-between gap-4">
-        <h1 className="text-foreground text-xl font-semibold">
-          {pl.athletePanel.loginTitle}
-        </h1>
+        <div>
+          <DudiCoachWordmark className="block text-lg text-primary" />
+          <h1 className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            {pl.athletePanel.loginTitle}
+          </h1>
+        </div>
         <SyncIndicator status={connectionStatus} />
       </header>
 

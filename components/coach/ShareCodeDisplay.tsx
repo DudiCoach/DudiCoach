@@ -28,7 +28,7 @@ export default function ShareCodeDisplay({ code }: ShareCodeDisplayProps) {
   return (
     <div className="flex items-center gap-4">
       <span
-        className="rounded-[6px] border border-[var(--color-border)] bg-[var(--color-input)] px-4 py-3 font-mono text-2xl font-bold tracking-widest text-[var(--color-foreground)]"
+        className="rounded-input border border-border bg-input px-4 py-3 font-mono text-2xl font-bold tracking-widest text-foreground"
         aria-label={pl.coach.athlete.online.accessCodeLabel}
       >
         {code}
@@ -37,7 +37,7 @@ export default function ShareCodeDisplay({ code }: ShareCodeDisplayProps) {
       <button
         type="button"
         onClick={handleCopy}
-        className="rounded-[6px] border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+        className="rounded-input border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
       >
         {copied ? pl.coach.athlete.online.copied : pl.coach.athlete.online.copy}
       </button>
