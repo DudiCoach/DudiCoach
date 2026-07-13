@@ -87,6 +87,17 @@ The schema foundation phase adds nullable columns to
 Existing identity, ownership, uniqueness, and timestamp columns remain
 unchanged. The existing `feedback_text` column becomes nullable.
 
+Scale semantics are part of the data contract:
+
+- wellbeing: 1 = very poor, 5 = very good;
+- pain: 0 = no pain, 10 = maximum perceived pain;
+- RPE: 1 = very easy, 10 = maximum effort.
+
+These meanings must be preserved consistently in PR1 `COMMENT ON COLUMN`
+statements, UI labels and help text, Athlete Context aggregates, and every AI
+projection and prompt interpretation. Numeric ranges without these meanings
+are not a complete contract.
+
 ### 3.2 Row validity invariant
 
 A row is valid only when at least one of these branches is true:
@@ -138,6 +149,11 @@ exists, all required rules apply atomically:
 - `pain_location` is NULL or one value from the controlled body-location
   catalog;
 - `pain_score = 0` requires `pain_location IS NULL`.
+
+The exact controlled `pain_location` catalog is a required PR1 deliverable.
+Its keys and user-facing meanings must be finalized in the design/migration
+review before the migration is approved, then shared by DB constraints, API
+validation, UI options, and Athlete Context projections.
 
 The application must not depend on a database default for `session_date`.
 The athlete explicitly supplies the local session date; the server and DB
@@ -377,7 +393,9 @@ existing static system-prompt caching behavior.
 Lane C. Add nullable columns, checks, whitespace pre-check, partial context
 index, generated database types, migration safety notes, and SQL/security
 tests. No RPC, route, UI, or AI behavior changes. Legacy text-only rows remain
-readable and valid.
+readable and valid. Finalize the exact controlled `pain_location` catalog and
+include the scale semantics in `COMMENT ON COLUMN`; PR1 migration approval is
+blocked until both are explicit and consistent with this design.
 
 ### PR2 - Outcome RPC/API/UI
 
