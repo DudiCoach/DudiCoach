@@ -1,8 +1,8 @@
 ---
 title: Athlete Context system
-status: g2-revised
+status: g2-corrected
 created: 2026-07-13
-updated: 2026-07-13
+updated: 2026-07-25
 lane: C
 related_designs:
   - docs/design/US-014-plan-session-feedback-design.md
@@ -82,7 +82,8 @@ The schema foundation phase adds nullable columns to
 | `session_rpe` | `smallint` | 1-10 for `completed`/`partial`; NULL for `skipped`. |
 | `wellbeing` | `smallint` | 1-5 for every structured outcome. |
 | `pain_score` | `smallint` | 0-10 for every structured outcome. |
-| `pain_location` | `text` | Optional controlled value; must be NULL when `pain_score = 0`. |
+| `pain_location` | `text` | Optional controlled body location; NULL when pain is zero. |
+| `pain_side` | `text` | Optional controlled laterality; NULL means not provided or not applicable. |
 
 Existing identity, ownership, uniqueness, and timestamp columns remain
 unchanged. The existing `feedback_text` column becomes nullable.
@@ -98,89 +99,154 @@ statements, UI labels and help text, Athlete Context aggregates, and every AI
 projection and prompt interpretation. Numeric ranges without these meanings
 are not a complete contract.
 
-### 3.2 Row validity invariant
+The controlled `pain_location` catalog for v1 is:
 
-A row is valid only when at least one of these branches is true:
+| Key | User-facing meaning |
+|---|---|
+| `head` | Head |
+| `neck` | Neck |
+| `shoulder` | Shoulder |
+| `chest_ribs` | Chest or ribs |
+| `abdomen` | Abdomen |
+| `upper_back` | Upper back |
+| `lower_back` | Lower back |
+| `pelvis_sacrum` | Pelvis or sacrum |
+| `arm` | Arm |
+| `elbow` | Elbow |
+| `wrist_hand` | Wrist or hand |
+| `hip_groin` | Hip or groin |
+| `buttock` | Buttock |
+| `thigh` | Thigh |
+| `knee` | Knee |
+| `lower_leg` | Lower leg or calf |
+| `ankle_achilles` | Ankle or Achilles tendon |
+| `foot` | Foot |
+| `other` | Other controlled location |
 
-1. It contains a complete valid structured outcome.
-2. It contains non-empty text after trimming.
+The controlled `pain_side` catalog for v1 is:
 
-This permits:
+| Key | Meaning |
+|---|---|
+| `left` | Left side |
+| `right` | Right side |
+| `bilateral` | Both sides |
+| `central` | Midline or central location; never an unspecified side |
 
-- structured outcome with text;
-- structured outcome without text;
-- legacy text-only row.
+`pain_side IS NULL` means that laterality was not provided or is not
+applicable. Laterality must never be inferred from `feedback_text`. Catalog
+keys are stable machine-readable values and must not later be repurposed.
 
-It rejects an empty row with neither a structured outcome nor usable text.
+### 3.2 Independent row validity constraints
 
-Conceptual constraint:
+Validation is split into three independent constraints. A single expression of
+"complete outcome OR non-empty text" is insufficient because it would allow a
+partial structured outcome to be hidden by valid text.
+
+First, the structured fields must either all be NULL or form one complete valid
+outcome:
+
+```sql
+check (
+  structured_outcome_fields_are_all_null
+  or structured_outcome_is_complete
+)
+```
+
+Second, optional feedback text must be valid after a full whitespace trim:
+
+```sql
+check (
+  feedback_text is null
+  or (
+    feedback_text ~ '[^[:space:]]'
+    and length(
+      regexp_replace(
+        feedback_text,
+        '^[[:space:]]+|[[:space:]]+$',
+        '',
+        'g'
+      )
+    ) between 1 and 2000
+  )
+)
+```
+
+Third, the row must contain either a complete outcome or usable text:
 
 ```sql
 check (
   structured_outcome_is_complete
-  or nullif(btrim(feedback_text), '') is not null
+  or (
+    feedback_text is not null
+    and feedback_text ~ '[^[:space:]]'
+  )
 )
 ```
 
-`feedback_text`, when present, must satisfy both:
+This permits a structured outcome with or without text and preserves legacy
+text-only rows. It rejects empty rows and rejects partial structured outcomes
+even when valid text is present. Migration pre-checks, later RPC validation,
+and application validation must use the same POSIX `[[:space:]]` semantics.
+Control characters remain subject to the existing sanitization rule: strip C0
+control characters except LF and TAB.
 
-```sql
-nullif(btrim(feedback_text), '') is not null
-length(btrim(feedback_text)) between 1 and 2000
-```
+### 3.3 Structured outcome completeness and date enforcement
 
-The explicit whitespace check is required because a length-only check accepts
-strings containing only spaces. Application and RPC validation must use the
-same trim and length semantics. Control characters remain subject to the
-existing sanitization rule: strip C0 control characters except LF and TAB.
-
-### 3.3 Structured outcome completeness
-
-A structured outcome exists when any structured field is supplied. If it
-exists, all required rules apply atomically:
+A structured outcome exists when any structured field, including `pain_side`,
+is supplied. If it exists, all required rules apply atomically:
 
 - `session_date` is not NULL;
-- `session_date <= (now() AT TIME ZONE 'Europe/Warsaw')::date`;
 - `session_status` is `completed`, `partial`, or `skipped`;
 - `wellbeing` is between 1 and 5;
 - `pain_score` is between 0 and 10;
 - `completed` and `partial` require `session_rpe` between 1 and 10;
 - `skipped` requires `session_rpe IS NULL`;
-- `pain_location` is NULL or one value from the controlled body-location
-  catalog;
-- `pain_score = 0` requires `pain_location IS NULL`.
+- `pain_location` is NULL or one value from the controlled location catalog;
+- `pain_side` is NULL or one value from the controlled side catalog;
+- `pain_score = 0` requires both `pain_location IS NULL` and
+  `pain_side IS NULL`;
+- non-NULL `pain_side` requires non-NULL `pain_location`;
+- `pain_location` and `pain_side` remain optional when `pain_score > 0`.
 
-The exact controlled `pain_location` catalog is a required PR1 deliverable.
-Its keys and user-facing meanings must be finalized in the design/migration
-review before the migration is approved, then shared by DB constraints, API
-validation, UI options, and Athlete Context projections.
+The future-date rule must not use a time-dependent `CHECK` constraint.
+PR1 adds a `BEFORE INSERT OR UPDATE OF session_date` trigger that rejects:
 
-The application must not depend on a database default for `session_date`.
-The athlete explicitly supplies the local session date; the server and DB
-reject future dates using the Europe/Warsaw date boundary above.
+```sql
+new.session_date > (now() AT TIME ZONE 'Europe/Warsaw')::date
+```
+
+The trigger validates writes but does not derive or modify the supplied date.
+It does not require `SECURITY DEFINER`; its function must use an explicit safe
+`search_path`. The application must not depend on a database default for
+`session_date`. The athlete supplies the local session date explicitly.
 
 ### 3.4 Legacy rows
 
 - Existing text-only rows remain valid.
-- `session_date` remains NULL for those rows; migration must not infer it from
-  `created_at` or `updated_at` and must not add a default.
-- Legacy rows are excluded from structured adherence, RPE, wellbeing, and pain
-  aggregates.
+- `session_date` and every structured field, including `pain_side`, remain NULL
+  for those rows; the migration must not infer values from `created_at`,
+  `updated_at`, or free text and must not add a date default.
+- Legacy rows are excluded from structured adherence, RPE, wellbeing, pain,
+  location, and laterality aggregates.
 - A bounded number may be exposed as `legacy_text_only` context entries when
   their text is relevant, but their date provenance must be marked as unknown.
-- No backfill may infer status, RPE, wellbeing, pain, or session date from
-  free text.
+- No status, RPE, wellbeing, pain, location, laterality, or session date may be
+  inferred from `feedback_text`.
 
 ### 3.5 Indexing and compatibility
 
 - Preserve `unique(plan_id, week_number, day_number)`.
 - Preserve the athlete/plan consistency trigger and `updated_at` trigger.
-- Add an index suitable for bounded context reads, for example
-  `(athlete_id, session_date desc) where session_date is not null`.
-- Avoid a duplicate index on the existing unique tuple.
-- Prefer new outcome RPC names or otherwise prove that replacing an existing
-  function does not break its signature, return shape, grants, or rolling
-  deployment compatibility.
+- Add `(athlete_id, session_date desc) where session_date is not null` for
+  bounded context reads; avoid a duplicate index on the existing unique tuple.
+- PR1 may add only the future-date validation trigger and its non-SECDEF helper
+  function; it does not replace or change an RPC.
+- Regenerate `lib/supabase/database.types.ts` from the migrated schema.
+- Because nullable `feedback_text` becomes `string | null`, PR1 may include the
+  minimum type-only compatibility adjustment, preferably in
+  `lib/api/plan-feedback.ts`, required to preserve the current API/UI contract.
+  This exception must not change runtime behavior, route payloads, RPC
+  signatures, validation, rendering, or current feedback semantics.
 
 ## 4. RPC, RLS, And Authorization
 
@@ -390,12 +456,18 @@ existing static system-prompt caching behavior.
 
 ### PR1 - Schema foundation
 
-Lane C. Add nullable columns, checks, whitespace pre-check, partial context
-index, generated database types, migration safety notes, and SQL/security
-tests. No RPC, route, UI, or AI behavior changes. Legacy text-only rows remain
-readable and valid. Finalize the exact controlled `pain_location` catalog and
-include the scale semantics in `COMMENT ON COLUMN`; PR1 migration approval is
-blocked until both are explicit and consistent with this design.
+Lane C. Add nullable outcome columns including `pain_side`, three independent
+row-validity constraints, POSIX-whitespace migration pre-checks, the
+Europe/Warsaw future-date trigger, the partial context index, complete column
+comments, generated database types, migration safety notes, and SQL/security
+tests. PR1 may also make only the minimum type-only compatibility change needed
+because `feedback_text` becomes `string | null`, preferably in
+`lib/api/plan-feedback.ts`.
+
+PR1 does not change RPCs, routes, payloads, UI behavior, rendering, or AI
+behavior. Legacy text-only rows remain readable and valid. Migration approval
+requires the exact location and side catalogs, scale semantics, trigger, and
+constraints to match this design.
 
 ### PR2 - Outcome RPC/API/UI
 
@@ -431,37 +503,65 @@ Future coach AI questions are a separate story after PR5.
 
 ## 10. Verification And G9
 
-Required verification by phase includes:
+Required PR1 migration pre-checks and verification include:
 
-- migration replay against a clean Supabase preview;
-- preservation of legacy rows and one-row-per-session uniqueness;
-- boundary tests for every numeric field and Europe/Warsaw future-date rule;
-- completed/partial/skipped RPE matrix;
-- pain location controlled-value and pain-zero rules;
-- whitespace-only and 2000-character text boundaries;
-- RLS dual-coach tests and direct anon table denial;
-- active/inactive share, wrong-plan, and non-existent-day denial;
-- SECDEF, search path, and function ACL checks;
-- deterministic 4/6/8-week builder tests and serialized-size assertions;
-- prompt-injection fixtures proving text stays in the data boundary;
-- confirmation that AI projections contain no share code or entire history;
-- provider token/latency measurement without prompt logging;
-- consultation and plan-generation runtime smoke with a safe fixture;
-- production log review for private-data or secret leakage.
+- count legacy rows that would fail the new POSIX `[[:space:]]` trim rule,
+  reporting only counts and never feedback content;
+- confirm the current table, unique constraint, RLS, ownership policy,
+  consistency trigger, `updated_at` trigger, RPC definitions, and function ACLs
+  before the migration;
+- replay the full migration history against a clean Supabase Preview;
+- confirm all new columns are nullable and `session_date` has no default;
+- preserve every valid legacy text-only row and one-row-per-session uniqueness;
+- accept complete structured outcomes with and without feedback text;
+- reject partial structured outcomes, including partial outcomes accompanied by
+  otherwise valid text;
+- test whitespace-only values containing spaces, TAB, LF, CR, and mixed POSIX
+  whitespace, plus the trimmed 1 and 2000 character boundaries;
+- test the completed/partial/skipped RPE matrix and every numeric boundary;
+- verify that the date trigger accepts the current Europe/Warsaw date and
+  rejects the next date, including a UTC/Europe-Warsaw boundary case;
+- test every `pain_location` and `pain_side` key, invalid keys, and NULL;
+- reject location or side when pain is zero;
+- reject side without location;
+- accept optional location and side when pain is greater than zero;
+- prove no laterality is inferred or backfilled from legacy text;
+- confirm the context index predicate and column ordering;
+- confirm all CHECK constraints are validated and the date trigger is enabled;
+- regenerate Supabase types from the Preview schema and run typecheck with only
+  an approved type-only compatibility adjustment if required;
+- verify existing RPC signatures, return shapes, SECURITY DEFINER attributes,
+  safe search paths, grants, public route behavior, and coach RLS remain
+  unchanged;
+- run applicable lint, full tests, build, independent G6, mandatory G7/G8, and
+  post-deployment G9 evidence.
 
-Each implementation PR requires its applicable typecheck, lint, tests, build,
-Supabase Preview, independent G6, G7, G8, and G9 evidence before closeout.
+Supabase Preview is a blocking PR1 gate. It must show successful migration
+replay, no unexpected schema drift, the expected constraints/index/trigger,
+and no RLS or ACL regression. G9 must confirm the migration version and schema
+objects in production and re-smoke the existing text feedback add/edit/read and
+coach display paths without logging feedback or private data.
 
 ## 11. Rollback Strategy
 
-- PR1 rollback should be forward-fix oriented: leave additive nullable columns
+- PR1 rollback is forward-fix oriented. Additive nullable columns should remain
   in place if application rollout is reverted; avoid destructive production
   rollback of outcome data.
+- The date trigger, helper function, new constraints, and context index may be
+  removed only by a new reviewed migration, never by editing migration history.
+- A destructive rollback that restores `feedback_text NOT NULL` or drops outcome
+  columns is permitted only after a pre-check proves every outcome field,
+  including `pain_side`, is NULL and every row has non-NULL valid feedback text.
+- If any structured or structured-only row exists, retain the columns and ship a
+  forward correction instead of dropping data.
+- The generated types and any PR1 type-only compatibility adjustment may be
+  reverted only together with the verified database rollback; they must never
+  misrepresent the deployed schema.
 - PR2 can revoke execute on new outcome RPCs and restore the text-only route/UI
   while retaining stored rows.
 - PR3 has no public runtime surface and can be reverted independently.
-- PR4 can disable/revert the consultation route and UI without changing
-  outcome data.
+- PR4 can disable/revert the consultation route and UI without changing outcome
+  data.
 - PR5 can restore the previous plan prompt builder; existing plans and job
   snapshots remain valid.
 
