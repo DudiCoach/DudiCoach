@@ -1,6 +1,20 @@
 import type { Tables } from "@/lib/supabase/database.types";
 
-export type PlanSessionFeedbackRow = Tables<"plan_session_feedback">;
+type PlanSessionFeedbackTableRow = Tables<"plan_session_feedback">;
+
+// Existing feedback endpoints still return the legacy text-feedback shape.
+export type PlanSessionFeedbackRow = Pick<
+  PlanSessionFeedbackTableRow,
+  | "id"
+  | "plan_id"
+  | "athlete_id"
+  | "week_number"
+  | "day_number"
+  | "created_at"
+  | "updated_at"
+> & {
+  feedback_text: NonNullable<PlanSessionFeedbackTableRow["feedback_text"]>;
+};
 
 export class PlanFeedbackValidationError extends Error {
   constructor() {
