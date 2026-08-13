@@ -22,7 +22,7 @@ Repo-local opencode config in `opencode.json` defines three agents:
 
 | Agent | Model | Reasoning | Edit | Bash | Role |
 |-------|-------|-----------|------|------|------|
-| `plan` | anthropic/claude-opus-4-7 | xhigh | deny | ask | Planning, architecture, scope definition |
+| `plan` | openai/gpt-5.6-sol | xhigh | deny | ask | Planning, architecture, scope definition |
 | `tester` | opencode/nemotron-3-ultra-free | high | allow | allow | Test writing + running, coverage verification |
 | `build` | opencode/mimo-v2.5-free | — | allow | allow | Code generation, edits, implementation |
 
