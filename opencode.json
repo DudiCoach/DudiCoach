@@ -1,0 +1,75 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/mimo-v2.5-free",
+  "small_model": "opencode/mimo-v2.5-free",
+  "default_agent": "build",
+  "shell": "/bin/zsh",
+  "share": "disabled",
+  "autoupdate": false,
+
+  "instructions": [
+    "AGENTS.md"
+  ],
+
+  "agent": {
+    "plan": {
+      "model": "anthropic/claude-opus-4-7",
+      "reasoningEffort": "xhigh",
+      "description": "Planning agent. Uses Anthropic Opus 4.7 with xhigh reasoning for complex reasoning, architecture decisions, and multi-step planning. Read-only — no file edits.",
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    },
+    "tester": {
+      "model": "opencode/nemotron-3-ultra-free",
+      "reasoningEffort": "high",
+      "description": "Test writer + runner. Uses Nemotron 3 Ultra Free for reading code, writing Vitest/Playwright tests, running them, and reporting pass/fail with evidence. Sits between planner (read-only) and builder (write code). Writes test files only — no production code edits.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "build": {
+      "model": "opencode/mimo-v2.5-free",
+      "description": "Build agent. Uses MiMo 2.5 Free for code generation, edits, and implementation tasks. Full edit + bash access.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    }
+  },
+
+  "skills": {
+    "paths": [
+      ".opencode/skills"
+    ]
+  },
+
+  "plugin": [
+    "@ex-machina/opencode-anthropic-auth@1.8.0"
+  ],
+
+  "permission": {
+    "edit": "allow",
+    "bash": {
+      "git *": "allow",
+      "npm *": "allow",
+      "npx *": "allow",
+      "gh *": "allow",
+      "firebase *": "allow",
+      "gcloud *": "allow",
+      "*": "ask"
+    }
+  },
+
+  "compaction": {
+    "auto": true,
+    "tail_turns": 15
+  },
+
+  "tool_output": {
+    "max_lines": 200,
+    "max_bytes": 8192
+  }
+}
