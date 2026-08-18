@@ -85,6 +85,17 @@ begin
     raise exception 'SECURITY-ASSERT 4 FAIL: date trigger helper executable by client roles';
   end if;
 
+  -- 4b. Helper attributes: SECURITY INVOKER (no prosecdef) and hardened search_path.
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'enforce_plan_session_feedback_session_date_not_future'
+      and (p.prosecdef or p.proconfig is distinct from array['search_path=pg_catalog'])
+  ) then
+    raise exception 'SECURITY-ASSERT 4b FAIL: date trigger helper attributes altered';
+  end if;
+
   -- 5. Partial context index with exact predicate and column order.
   if not exists (
     select 1 from pg_indexes i
@@ -121,8 +132,9 @@ begin
       and p.policyname = 'plan_session_feedback_select_own'
       and p.cmd = 'SELECT'
       and p.roles @> array['authenticated']::name[]
+      and p.qual ilike '%coach_id = auth.uid()%'
   ) then
-    raise exception 'SECURITY-ASSERT 6 FAIL: coach read-only policy missing or altered';
+    raise exception 'SECURITY-ASSERT 6 FAIL: coach read-only policy missing, altered, or qual tampered';
   end if;
 
   if exists (
@@ -162,14 +174,30 @@ begin
      or not has_function_privilege('authenticated', 'public.get_plan_session_feedback_by_share_code(character,uuid,integer,integer)', 'execute') then
     raise exception 'SECURITY-ASSERT 8 FAIL: RPC ACL regression (anon/authenticated execute lost)';
   end if;
+
+  -- 8b. RPC attributes unchanged: SECURITY DEFINER with search_path = public.
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'upsert_plan_session_feedback',
+        'get_plan_session_feedback_by_share_code'
+      )
+      and (not p.prosecdef or p.proconfig is distinct from array['search_path=public'])
+  ) then
+    raise exception 'SECURITY-ASSERT 8b FAIL: RPC SECURITY DEFINER/search_path regression';
+  end if;
 end;
 $$;
 
 -- Behavioral ACL checks: client roles cannot touch the table directly.
+-- Session-level set role: a failed role switch raises immediately instead of
+-- being swallowed by the insufficient_privilege handler below.
+set role anon;
 do $$
 begin
   begin
-    set local role anon;
     perform count(*) from public.plan_session_feedback;
     raise exception 'SECURITY-ASSERT 9 FAIL: anon can select the table directly';
   exception when insufficient_privilege then
@@ -177,11 +205,12 @@ begin
   end;
 end;
 $$;
+reset role;
 
+set role authenticated;
 do $$
 begin
   begin
-    set local role authenticated;
     perform count(*) from public.plan_session_feedback;
     raise exception 'SECURITY-ASSERT 10 FAIL: authenticated can select the table directly';
   exception when insufficient_privilege then
@@ -189,6 +218,7 @@ begin
   end;
 end;
 $$;
+reset role;
 
 -- Public write path still works via the upsert RPC (text-only, unchanged).
 set role anon;

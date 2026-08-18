@@ -105,8 +105,63 @@ begin
   set session_date = v_today
   where plan_id = v_plan and week_number = 3 and day_number = 4;
   insert into outcome_result values ('a10_session_date_today', 'pass');
+
+  -- A11: pain_score = 10 accepted (upper boundary) with location and side.
+  insert into public.plan_session_feedback
+    (plan_id, athlete_id, week_number, day_number, session_date, session_status, session_rpe, wellbeing, pain_score, pain_location, pain_side)
+  values (v_plan, v_athlete, 3, 5, v_today, 'completed', 10, 1, 10, 'lower_back', 'central');
+  insert into outcome_result values ('a11_pain_score_10', 'pass');
 end;
 $$;
+
+-- ---------- Deterministic timezone boundary (design §10) ----------
+-- The trigger computes its reference date as (now() at time zone
+-- 'Europe/Warsaw')::date. A wrongly UTC- or session-based trigger cannot be
+-- discriminated behaviorally at every wall-clock time (the calendars only
+-- differ inside the daily overlap window), so the deterministic checks are:
+--   1. structural: the helper's source text pins the Europe/Warsaw zone;
+--   2. behavioral under a UTC session: the Warsaw-today date is accepted and
+--      Warsaw-tomorrow is rejected, proving session-timezone independence
+--      (a session-dependent trigger would reject Warsaw-today during the
+--      overlap window, and a UTC-based one would reject it differently).
+-- Both runs always pass for the correct trigger in every calendar state.
+set timezone to 'UTC';
+
+do $$
+declare
+  v_plan uuid := 'e0000000-0000-0000-0000-000000000001';
+  v_athlete uuid := 'a0000000-0000-0000-0000-000000000001';
+  v_warsaw_today date := (now() at time zone 'Europe/Warsaw')::date;
+  v_def text;
+begin
+  select pg_get_functiondef(
+    'public.enforce_plan_session_feedback_session_date_not_future()'::regprocedure
+  ) into v_def;
+
+  if v_def not ilike '%at time zone ''Europe/Warsaw''%' then
+    raise exception 'A11 FAIL: date trigger does not use the Europe/Warsaw zone: %', v_def;
+  end if;
+  insert into outcome_result values ('a11_trigger_uses_europe_warsaw', 'pass');
+
+  -- A12: Warsaw-today accepted under a UTC session.
+  insert into public.plan_session_feedback
+    (plan_id, athlete_id, week_number, day_number, session_date, session_status, session_rpe, wellbeing, pain_score)
+  values (v_plan, v_athlete, 3, 6, v_warsaw_today, 'completed', 1, 1, 0);
+  insert into outcome_result values ('a12_utc_session_warsaw_today_accepted', 'pass');
+
+  -- A13: Warsaw-tomorrow rejected under a UTC session.
+  begin
+    insert into public.plan_session_feedback
+      (plan_id, athlete_id, week_number, day_number, session_date, session_status, session_rpe, wellbeing, pain_score)
+    values (v_plan, v_athlete, 3, 7, v_warsaw_today + 1, 'completed', 1, 1, 0);
+    insert into outcome_result values ('a13_utc_session_warsaw_tomorrow_rejected', 'unexpectedly accepted');
+  exception when invalid_parameter_value then
+    insert into outcome_result values ('a13_utc_session_warsaw_tomorrow_rejected', 'pass');
+  end;
+end;
+$$;
+
+set timezone to default;
 
 -- ---------- Rejected cases ----------
 
@@ -346,6 +401,16 @@ begin
     insert into outcome_result values ('r18_status_without_date', 'unexpectedly accepted');
   exception when check_violation then
     insert into outcome_result values ('r18_status_without_date', 'pass');
+  end;
+
+  -- R19: pain_side while pain_score = 0 (location NULL).
+  begin
+    insert into public.plan_session_feedback
+      (plan_id, athlete_id, week_number, day_number, session_date, session_status, session_rpe, wellbeing, pain_score, pain_side)
+    values (v_plan, v_athlete, 2, 7, v_today, 'completed', 1, 1, 0, 'left');
+    insert into outcome_result values ('r19_side_with_pain_zero', 'unexpectedly accepted');
+  exception when check_violation then
+    insert into outcome_result values ('r19_side_with_pain_zero', 'pass');
   end;
 end;
 $$;

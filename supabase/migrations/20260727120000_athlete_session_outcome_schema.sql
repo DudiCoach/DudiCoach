@@ -17,6 +17,12 @@
 
 begin;
 
+-- Serialize against concurrent direct-RPC writes so the legacy-row pre-check
+-- below cannot observe a snapshot that the later VALIDATE CONSTRAINT scan
+-- (20260727120001) would reject. The lock is held until commit and overlaps
+-- the fast DDL window only.
+lock table public.plan_session_feedback in access exclusive mode;
+
 -- Fail fast without exposing feedback content or athlete data.
 do $$
 declare
@@ -111,6 +117,18 @@ begin
   end if;
 
   -- ACL baseline (design §10: verify function ACLs before the migration).
+  -- Existence is checked first: has_function_privilege returns NULL (and
+  -- silently passes an IF test) when the function does not exist.
+  if to_regprocedure(
+    'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)'
+  ) is null then
+    raise exception 'Pre-check failed: upsert RPC signature is missing';
+  end if;
+  if to_regprocedure(
+    'public.get_plan_session_feedback_by_share_code(character,uuid,integer,integer)'
+  ) is null then
+    raise exception 'Pre-check failed: read RPC signature is missing';
+  end if;
   if has_function_privilege(
     'public',
     'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)',
@@ -424,7 +442,8 @@ begin
     raise exception 'Outcome schema post-check failed: date trigger missing or disabled';
   end if;
 
-  -- Trigger helper must not be callable by PUBLIC/anon/authenticated.
+  -- Trigger helper must not be callable by PUBLIC/anon/authenticated, must not
+  -- be SECURITY DEFINER, and must keep its hardened search_path.
   if has_function_privilege(
     'public',
     'public.enforce_plan_session_feedback_session_date_not_future()',
@@ -439,6 +458,17 @@ begin
     'execute'
   ) then
     raise exception 'Outcome schema post-check failed: date trigger helper is executable outside the owner';
+  end if;
+
+  if exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'enforce_plan_session_feedback_session_date_not_future'
+      and (p.prosecdef or p.proconfig is distinct from array['search_path=pg_catalog'])
+  ) then
+    raise exception 'Outcome schema post-check failed: date trigger helper attributes altered';
   end if;
 
   if not exists (
@@ -475,7 +505,8 @@ begin
   end if;
 
   -- RLS surface unchanged: the coach read-only policy exists, no policy
-  -- targets anon, and there is no client write policy.
+  -- targets anon, and there is no client write policy. The USING expression
+  -- is checked so a tampered qual (e.g. `true`) cannot pass.
   if not exists (
     select 1
     from pg_policies p
@@ -484,6 +515,7 @@ begin
       and p.policyname = 'plan_session_feedback_select_own'
       and p.cmd = 'SELECT'
       and p.roles @> array['authenticated']::name[]
+      and p.qual ilike '%coach_id = auth.uid()%'
   ) then
     raise exception 'Outcome schema post-check failed: coach read-only policy missing or altered';
   end if;

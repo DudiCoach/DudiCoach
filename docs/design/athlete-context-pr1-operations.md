@@ -16,7 +16,9 @@ PR1 ships two migrations and `lib/api/plan-feedback.ts` changes:
 The split into two files means the constraints are validated in a second,
 short, non-blocking-by-design step; the first migration still holds an
 ACCESS EXCLUSIVE lock only for its own duration (small table, additive
-columns, no backfill).
+columns, no backfill). The first migration takes the table lock as its
+first statement, so the legacy-row pre-check cannot observe a snapshot
+that a concurrent direct-RPC write could later invalidate.
 
 ## 2. Rollout
 
@@ -96,8 +98,14 @@ feedback content.
 - `plan_session_feedback` row count / write volume trend after rollout
   (Supabase logs; no new error classes expected).
 - Watch Supabase logs for `check_violation` / `invalid_parameter_value`
-  errors at 20260727120000's helper or constraints — they indicate
+  errors at 20260727120000's constraints or helper — they indicate
   misbehaving clients, not a migration fault.
+- **Known public-behavior change (intended, design §3.2):** after this PR,
+  direct PostgREST calls to `upsert_plan_session_feedback` with
+  whitespace-only (TAB/CR/LF/mixed) text that previously succeeded now fail
+  with `check_violation` (23514). The app route maps 23514 and 22023 to a
+  400 "Validation failed"; direct API consumers must trim POSIX whitespace.
+  PR2 will add the same rule inside the RPC so rejection is uniform.
 - The `plan_session_feedback_athlete_consistency` legacy trigger has no
   EXECUTE grant for anon/authenticated (Supabase default). It is a known
   follow-up, not part of PR1; do not attempt to grant it here.

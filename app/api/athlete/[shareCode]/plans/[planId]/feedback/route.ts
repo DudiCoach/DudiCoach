@@ -26,6 +26,10 @@ function isValidationError(error: SupabaseErrorLike) {
   return error?.code === "22023";
 }
 
+function isCheckViolationError(error: SupabaseErrorLike) {
+  return error?.code === "23514";
+}
+
 function isNotFoundLikeError(error: SupabaseErrorLike) {
   return error?.code === "P0001";
 }
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   });
 
   if (error) {
-    if (isValidationError(error)) {
+    if (isValidationError(error) || isCheckViolationError(error)) {
       return NextResponse.json({ error: "Validation failed" }, { status: 400 });
     }
     if (isNotFoundLikeError(error)) {
