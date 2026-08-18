@@ -29,8 +29,8 @@ US-025 can be marked Done.
 | `lib/types/plan-public.ts` | ✅ Approve | Five-field interface matches RPC return exactly. JSDoc references design doc §2. |
 | `app/api/athlete/[shareCode]/plans/route.ts` | ✅ Approve | Regex before RPC. 404 on malformed. 500 log omits share code. `{ data: null }` on empty. No service-role client. |
 | `components/athlete/PlanPublicSection.tsx` | ✅ Approve | `"use client"` justified by `useState`. Empty state and plan state correct. Design-system tokens only. All 3 i18n keys consumed. |
-| `tests/integration/athlete/plans-route.test.ts` | ✅ Approve | 7 tests: malformed, forbidden chars, empty→null, happy path with `not.toHaveProperty("athlete_id")`, 500, lowercase normalization, cross-athlete isolation. |
-| `tests/unit/components/athlete/PlanPublicSection.test.tsx` | ✅ Approve | 11 tests covering null + valid branches, subcomponent mocking, `generatedOn` date rendering. |
+| `tests/integration/athlete/plans-route.test.ts` | ✅ Approve | 11 tests: malformed, forbidden chars, nonexistent, inactive, empty→null, happy path with `not.toHaveProperty("athlete_id")`, latest-row selection, 500s, lowercase normalization, cross-athlete isolation. |
+| `tests/unit/components/athlete/PlanPublicSection.test.tsx` | ✅ Approve | 4 tests covering null + valid branches, subcomponent mocking, `generatedOn` date rendering. |
 | `components/coach/PlanHeader.tsx` | ✅ Approve | Widened prop is strictly more sound (drops unused fields). No behaviour change in JSX. Both callers still satisfy structural type. |
 | `app/(athlete)/[shareCode]/page.tsx` | ✅ Approve | 3-way parallel RPC. Profile RPC remains sole 404 gate. Plan error non-fatal (empty section > full-page 404). |
 | `components/athlete/AthletePanel.tsx` | ✅ Approve | New prop threaded correctly. `PlanPublicSection` below injuries. No realtime wiring (per §5.1). |
@@ -47,7 +47,7 @@ None.
 2. **`as unknown as` casts** in `route.ts:46` and `page.tsx:77`: correct but warrant a one-line rationale comment (Supabase `Json` vs `TrainingPlanJson` — shape validated at write time by `trainingPlanJsonSchema`).
 3. **Plan-fetch failure silent to user**: `planError` shows empty state indistinguishable from "no plan yet". Acceptable (matches injuries pattern); future story may want a distinct error banner.
 4. **Type location inconsistency**: `PublicTrainingPlan` lives in `lib/types/` while coach-side `TrainingPlan` lives in `lib/api/plans.ts`. Not worth reshuffling here.
-5. **No E2E (Playwright) test**: Integration coverage is thorough; flag for a future story if E2E is required by DoD policy.
+5. **No E2E (Playwright) test**: Integration coverage is thorough; E2E was added and passed in the G9 closeout (2026-08-18) — see the G9 closeout evidence section below.
 
 ## Security checklist (verified)
 
@@ -72,16 +72,39 @@ None.
 - No 500s on `/api/athlete/*/plans`
 - No console errors in `PlanHeader` after prop-type widening
 
+## G9 closeout evidence (2026-08-18)
+
+The remaining runtime gap from the April smoke — active share code WITH a plan —
+is now closed. Production run against `main@b7e9355` (Vercel production +
+Supabase `qpsgpfnqlbbrvawjeeaj`), synthetic ephemeral fixtures (deleted after
+the run, codes never committed):
+
+- E2E `tests/e2e/US-025.spec.ts`: **16 passed / 4 skipped by design / 0 failed**
+  (Chromium desktop + Pixel 7 mobile).
+- API verified: exact five-field public shape, newest plan selected, no
+  `athlete_id`/`coach_id`/`share_code` anywhere, codes never echoed,
+  `{ data: null }` for empty, 404 for inactive/retired/malformed.
+- UI verified: plan header (name, phase badge, weekly overview, generated
+  date), week 1-4 tabs, week switching, empty state, 404 pages, navigation
+  HTTP statuses.
+- Endpoint latency (30 anonymous probes): p50 485ms, p99 732ms, 0 errors.
+- Post-cleanup: all fixture codes return HTTP 404.
+- Residual: server log checks (5xx / `42883` / RPC errors) require Vercel +
+  Supabase log access — manual verification steps in `qa/e2e/US-025-report.md`.
+- Verdict on closeout gate: **Pass** (G9 evidence recorded in
+  `qa/e2e/US-025-report.md`; story status → Done).
+
 ## Post-merge production smoke (2026-04-25)
 
 Status: **Partially passed** (active-with-plan runtime case pending)
 
-User-provided production smoke evidence after PR #30 merge and manual US-025 migration apply:
+User-provided production smoke evidence after PR #30 merge and manual US-025 migration apply
+(share codes redacted to placeholders — they are bearer credentials and were rotated after the smoke):
 
-1. `GET /api/athlete/DKG3YF` -> `200`
-2. `GET /api/athlete/DKG3YF/plans` -> `200 {"data":null}`
+1. `GET /api/athlete/<SAMPLE-ACTIVE-CODE>` -> `200`
+2. `GET /api/athlete/<SAMPLE-ACTIVE-CODE>/plans` -> `200 {"data":null}`
 3. `GET /api/athlete/abc/plans` -> `404`
-4. `GET /api/athlete/ZZZ234/plans` -> `404`
+4. `GET /api/athlete/<SAMPLE-UNKNOWN-CODE>/plans` -> `404`
 
 Interpretation:
 
