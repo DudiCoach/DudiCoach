@@ -4,13 +4,13 @@ title: Generowanie planu treningowego przez Claude AI
 role: trener
 priority: P0
 estimate: L
-status: InE2E
+status: Done
 dependencies: [US-002, US-003]
 epic: EPIC-B
 design_required: true
 design_doc: docs/design/US-005-design.md
 created: 2026-04-08
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # US-005 — Generowanie planu treningowego przez Claude AI
