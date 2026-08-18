@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Supabase CLI-generated artifacts (supabase start/db reset)
+    "supabase/.temp/**",
   ]),
 ]);
 

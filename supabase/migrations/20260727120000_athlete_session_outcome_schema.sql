@@ -1,6 +1,19 @@
--- Athlete Session Outcome schema foundation (PR1A).
--- Scope: additive outcome columns, validation constraints, date trigger, index,
--- and column documentation. Existing RLS, policies, grants, and RPCs are not changed.
+-- Athlete Session Outcome schema foundation (PR1, reworked).
+-- Scope: additive outcome columns, validation constraints (added NOT VALID,
+-- validated in the sibling 20260727120001 file), date trigger, partial index,
+-- column documentation, and hardened trigger-function ACL.
+-- Lane C. Design: docs/design/athlete-context-system-design.md §3, §10, §11.
+--
+-- Lock profile (this file's transaction):
+--   - ADD COLUMN x7 .......... ACCESS EXCLUSIVE, metadata-only (no DEFAULT, no NOT NULL) - fast
+--   - ADD CONSTRAINT x3 ...... ACCESS EXCLUSIVE, NOT VALID - no table scan - fast
+--   - DROP CONSTRAINT / ALTER COLUMN DROP NOT NULL - ACCESS EXCLUSIVE, no scan - fast
+--   - CREATE INDEX ........... SHARE (brief write block; small table)
+--   - CREATE FUNCTION/TRIGGER - brief ACCESS EXCLUSIVE
+--   The expensive VALIDATE CONSTRAINT scans run in the NEXT transaction
+--   (20260727120001) under SHARE UPDATE EXCLUSIVE, which does not block
+--   concurrent INSERT/UPDATE/DELETE. Splitting the files bounds the
+--   ACCESS EXCLUSIVE window to the fast DDL above.
 
 begin;
 
@@ -95,6 +108,49 @@ begin
       and c.relrowsecurity
   ) then
     raise exception 'Expected RLS-enabled plan_session_feedback table';
+  end if;
+
+  -- ACL baseline (design §10: verify function ACLs before the migration).
+  if has_function_privilege(
+    'public',
+    'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)',
+    'execute'
+  ) then
+    raise exception 'Pre-check failed: upsert RPC is executable by PUBLIC';
+  end if;
+  if not has_function_privilege(
+    'anon',
+    'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)',
+    'execute'
+  ) then
+    raise exception 'Pre-check failed: upsert RPC lost anon execute';
+  end if;
+  if not has_function_privilege(
+    'authenticated',
+    'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)',
+    'execute'
+  ) then
+    raise exception 'Pre-check failed: upsert RPC lost authenticated execute';
+  end if;
+  if has_function_privilege(
+    'public',
+    'public.get_plan_session_feedback_by_share_code(character,uuid,integer,integer)',
+    'execute'
+  ) then
+    raise exception 'Pre-check failed: read RPC is executable by PUBLIC';
+  end if;
+
+  -- Baseline: no direct DML grants to client roles (Supabase default grants
+  -- cover only non-DML privileges); table access is RPC-only.
+  if exists (
+    select 1
+    from information_schema.role_table_grants g
+    where g.table_schema = 'public'
+      and g.table_name = 'plan_session_feedback'
+      and g.grantee in ('anon', 'authenticated')
+      and g.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+  ) then
+    raise exception 'Pre-check failed: unexpected direct DML grant for anon/authenticated';
   end if;
 
   select count(*)
@@ -226,13 +282,6 @@ alter table public.plan_session_feedback
     )
   ) not valid;
 
-alter table public.plan_session_feedback
-  validate constraint plan_session_feedback_outcome_complete;
-alter table public.plan_session_feedback
-  validate constraint plan_session_feedback_feedback_text_valid;
-alter table public.plan_session_feedback
-  validate constraint plan_session_feedback_has_content;
-
 -- The validated replacement constraints are in place before relaxing legacy text.
 alter table public.plan_session_feedback
   drop constraint plan_session_feedback_feedback_text_check,
@@ -255,6 +304,15 @@ begin
   return new;
 end;
 $$;
+
+-- Trigger helpers are callable only by the table owner / trigger engine.
+-- Never grant EXECUTE to anon/authenticated/PUBLIC for this helper.
+revoke all on function public.enforce_plan_session_feedback_session_date_not_future()
+  from public;
+revoke all on function public.enforce_plan_session_feedback_session_date_not_future()
+  from anon;
+revoke all on function public.enforce_plan_session_feedback_session_date_not_future()
+  from authenticated;
 
 create trigger plan_session_feedback_session_date_not_future
   before insert or update of session_date
@@ -291,7 +349,8 @@ comment on function public.enforce_plan_session_feedback_session_date_not_future
 do $$
 declare
   v_nullable_outcome_columns integer;
-  v_validated_constraints integer;
+  v_outcome_constraints integer;
+  v_policies integer;
 begin
   select count(*)
   into v_nullable_outcome_columns
@@ -315,8 +374,10 @@ begin
       v_nullable_outcome_columns;
   end if;
 
+  -- The three replacement constraints must exist; validation happens in
+  -- 20260727120001_athlete_session_outcome_validate.sql.
   select count(*)
-  into v_validated_constraints
+  into v_outcome_constraints
   from pg_constraint c
   where c.conrelid = 'public.plan_session_feedback'::regclass
     and c.conname in (
@@ -324,12 +385,32 @@ begin
       'plan_session_feedback_feedback_text_valid',
       'plan_session_feedback_has_content'
     )
-    and c.contype = 'c'
-    and c.convalidated;
+    and c.contype = 'c';
 
-  if v_validated_constraints <> 3 then
-    raise exception 'Outcome schema post-check failed: expected 3 validated constraints, found %',
-      v_validated_constraints;
+  if v_outcome_constraints <> 3 then
+    raise exception 'Outcome schema post-check failed: expected 3 replacement constraints, found %',
+      v_outcome_constraints;
+  end if;
+
+  if exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = 'public.plan_session_feedback'::regclass
+      and c.conname = 'plan_session_feedback_feedback_text_check'
+      and c.contype = 'c'
+  ) then
+    raise exception 'Outcome schema post-check failed: legacy feedback_text check still present';
+  end if;
+
+  if not exists (
+    select 1
+    from information_schema.columns c
+    where c.table_schema = 'public'
+      and c.table_name = 'plan_session_feedback'
+      and c.column_name = 'feedback_text'
+      and c.is_nullable = 'YES'
+  ) then
+    raise exception 'Outcome schema post-check failed: feedback_text is still NOT NULL';
   end if;
 
   if not exists (
@@ -343,6 +424,35 @@ begin
     raise exception 'Outcome schema post-check failed: date trigger missing or disabled';
   end if;
 
+  -- Trigger helper must not be callable by PUBLIC/anon/authenticated.
+  if has_function_privilege(
+    'public',
+    'public.enforce_plan_session_feedback_session_date_not_future()',
+    'execute'
+  ) or has_function_privilege(
+    'anon',
+    'public.enforce_plan_session_feedback_session_date_not_future()',
+    'execute'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.enforce_plan_session_feedback_session_date_not_future()',
+    'execute'
+  ) then
+    raise exception 'Outcome schema post-check failed: date trigger helper is executable outside the owner';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_indexes i
+    where i.schemaname = 'public'
+      and i.tablename = 'plan_session_feedback'
+      and i.indexname = 'idx_plan_session_feedback_athlete_session_date'
+      and i.indexdef ilike '%(athlete_id, session_date DESC)%'
+      and i.indexdef ilike '%WHERE (session_date IS NOT NULL)%'
+  ) then
+    raise exception 'Outcome schema post-check failed: context index missing or wrong predicate/order';
+  end if;
+
   if not exists (
     select 1
     from pg_class c
@@ -354,6 +464,53 @@ begin
     raise exception 'Outcome schema post-check failed: RLS is not enabled';
   end if;
 
+  select count(*)
+  into v_policies
+  from pg_policies p
+  where p.schemaname = 'public'
+    and p.tablename = 'plan_session_feedback';
+
+  if v_policies < 1 then
+    raise exception 'Outcome schema post-check failed: no RLS policies on plan_session_feedback';
+  end if;
+
+  -- RLS surface unchanged: the coach read-only policy exists, no policy
+  -- targets anon, and there is no client write policy.
+  if not exists (
+    select 1
+    from pg_policies p
+    where p.schemaname = 'public'
+      and p.tablename = 'plan_session_feedback'
+      and p.policyname = 'plan_session_feedback_select_own'
+      and p.cmd = 'SELECT'
+      and p.roles @> array['authenticated']::name[]
+  ) then
+    raise exception 'Outcome schema post-check failed: coach read-only policy missing or altered';
+  end if;
+
+  if exists (
+    select 1
+    from pg_policies p
+    where p.schemaname = 'public'
+      and p.tablename = 'plan_session_feedback'
+      and (p.roles @> array['anon']::name[] or p.cmd in ('INSERT', 'UPDATE', 'DELETE'))
+  ) then
+    raise exception 'Outcome schema post-check failed: unexpected anon or write policy added';
+  end if;
+
+  -- No new direct DML grants for client roles; table access is RPC-only.
+  if exists (
+    select 1
+    from information_schema.role_table_grants g
+    where g.table_schema = 'public'
+      and g.table_name = 'plan_session_feedback'
+      and g.grantee in ('anon', 'authenticated')
+      and g.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+  ) then
+    raise exception 'Outcome schema post-check failed: direct DML grant for anon/authenticated detected';
+  end if;
+
+  -- RPC surface unchanged.
   if to_regprocedure(
     'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)'
   ) is null then
@@ -364,6 +521,26 @@ begin
     'public.get_plan_session_feedback_by_share_code(character,uuid,integer,integer)'
   ) is null then
     raise exception 'Outcome schema post-check failed: read RPC signature changed';
+  end if;
+
+  if not has_function_privilege(
+    'anon',
+    'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)',
+    'execute'
+  ) or not has_function_privilege(
+    'authenticated',
+    'public.upsert_plan_session_feedback(character,uuid,integer,integer,text)',
+    'execute'
+  ) or not has_function_privilege(
+    'anon',
+    'public.get_plan_session_feedback_by_share_code(character,uuid,integer,integer)',
+    'execute'
+  ) or not has_function_privilege(
+    'authenticated',
+    'public.get_plan_session_feedback_by_share_code(character,uuid,integer,integer)',
+    'execute'
+  ) then
+    raise exception 'Outcome schema post-check failed: RPC ACL regression detected';
   end if;
 end;
 $$;
