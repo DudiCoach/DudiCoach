@@ -98,12 +98,13 @@ the run, codes never committed):
 
 Status: **Partially passed** (active-with-plan runtime case pending)
 
-User-provided production smoke evidence after PR #30 merge and manual US-025 migration apply:
+User-provided production smoke evidence after PR #30 merge and manual US-025 migration apply
+(share codes redacted to placeholders — they are bearer credentials and were rotated after the smoke):
 
-1. `GET /api/athlete/DKG3YF` -> `200`
-2. `GET /api/athlete/DKG3YF/plans` -> `200 {"data":null}`
+1. `GET /api/athlete/<SAMPLE-ACTIVE-CODE>` -> `200`
+2. `GET /api/athlete/<SAMPLE-ACTIVE-CODE>/plans` -> `200 {"data":null}`
 3. `GET /api/athlete/abc/plans` -> `404`
-4. `GET /api/athlete/ZZZ234/plans` -> `404`
+4. `GET /api/athlete/<SAMPLE-UNKNOWN-CODE>/plans` -> `404`
 
 Interpretation:
 

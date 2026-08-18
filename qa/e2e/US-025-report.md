@@ -25,8 +25,8 @@ npx playwright test tests/e2e/US-025.spec.ts --reporter=line
 ```
 
 - `PLAYWRIGHT_BASE_URL` = production deployment URL
-- 20 tests scheduled: 5 API-contract cases (desktop project only), 12 UI cases
-  (desktop + mobile), 1 always-runnable malformed-code case per project
+- 20 tests scheduled: 4 API-contract cases (desktop project only), 10 UI cases
+  (5 cases × desktop + mobile), 2 malformed-code executions (one per project)
 - 4 skipped = API-contract cases intentionally skipped on the mobile project
   (API shape is device-independent)
 

@@ -38,19 +38,24 @@ const isCI = !!process.env.CI;
 const CODE_REGEX = /^[A-HJ-NP-Z2-9]{6}$/;
 
 function validateFixture(): string | null {
-  if (!planCode) {
-    return "Set E2E_US025_PLAN_SHARE_CODE to run the US-025 production smoke.";
-  }
-  const codes = [planCode, emptyCode, inactiveCode, retiredCode];
-  for (const code of codes) {
-    if (code !== code.toUpperCase()) {
-      return "Fixture share codes must be uppercase.";
+  const required = [
+    ["E2E_US025_PLAN_SHARE_CODE", planCode],
+    ["E2E_US025_EMPTY_SHARE_CODE", emptyCode],
+    ["E2E_US025_INACTIVE_SHARE_CODE", inactiveCode],
+    ["E2E_US025_RETIRED_SHARE_CODE", retiredCode],
+  ] as const;
+  for (const [name, value] of required) {
+    if (!value) {
+      return `Set ${name} to run the US-025 production smoke.`;
     }
-    if (!CODE_REGEX.test(code)) {
-      return `Fixture share code has invalid format: "${code}".`;
+    if (value !== value.toUpperCase()) {
+      return `${name} must be uppercase.`;
+    }
+    if (!CODE_REGEX.test(value)) {
+      return `${name} has invalid format: "${value}".`;
     }
   }
-  if (new Set(codes).size !== codes.length) {
+  if (new Set([planCode, emptyCode, inactiveCode, retiredCode]).size !== 4) {
     return "Fixture share codes must be mutually distinct.";
   }
   if (!expectedPlanId) {
@@ -164,6 +169,9 @@ test.describe("US-025 - athlete plan display", () => {
     page,
     request,
   }) => {
+    // NOTE: the page-level "404" text assertion relies on the Next.js default
+    // not-found page (the repo has no custom app/not-found.tsx). A future
+    // custom 404 page must keep a literal "404" text node.
     const api = await request.get("/api/athlete/123/plans");
     expect(api.status()).toBe(404);
     expect(await api.json()).toEqual({ error: "Not found" });

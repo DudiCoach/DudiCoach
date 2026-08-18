@@ -36,7 +36,7 @@
 | US-019 | Dashboard hydration - initialData w useAthletes query | EPIC-A | P2 | XS | Done | Review Approve 2026-04-20; impl 52af115 |
 | US-011 | Kontuzje zawodnika - lista z severity | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `4/4 passed` (2026-04-24); E2E/runtime closed |
 | US-012 | Testy sprawnosciowe - dynamiczne per sport | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `8/8 passed` (2026-04-24); E2E/runtime closed |
-| US-025 | Panel zawodnika - wyswietlanie planu treningowego | EPIC-B | P1 | M | Done | PR #30 + smoke #31; production E2E 16/16 pass + G9 2026-08-18 |
+| US-025 | Panel zawodnika - wyswietlanie planu treningowego | EPIC-B | P1 | M | Done | PR #30 + smoke #31; production E2E 16/4/0 (16 passed, 4 skipped by design) + G9 2026-08-18 |
 
 ## Operational Notes (2026-04-15)
 
