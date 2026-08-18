@@ -17,13 +17,17 @@ type PlanSessionFeedbackRow = {
   athlete_id: string;
   week_number: number;
   day_number: number;
-  feedback_text: string;
+  feedback_text: string | null;
   created_at: string;
   updated_at: string;
 };
 
 function isValidationError(error: SupabaseErrorLike) {
   return error?.code === "22023";
+}
+
+function isCheckViolationError(error: SupabaseErrorLike) {
+  return error?.code === "23514";
 }
 
 function isNotFoundLikeError(error: SupabaseErrorLike) {
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   });
 
   if (error) {
-    if (isValidationError(error)) {
+    if (isValidationError(error) || isCheckViolationError(error)) {
       return NextResponse.json({ error: "Validation failed" }, { status: 400 });
     }
     if (isNotFoundLikeError(error)) {

@@ -1,6 +1,23 @@
 import type { Tables } from "@/lib/supabase/database.types";
 
-export type PlanSessionFeedbackRow = Tables<"plan_session_feedback">;
+type PlanSessionFeedbackTableRow = Tables<"plan_session_feedback">;
+
+// Existing feedback endpoints still return the legacy text-feedback shape.
+// feedback_text is nullable in the schema since PR1 (outcome-only rows may
+// omit it); the text-only RPC path cannot produce NULL today, but the type
+// mirrors the deployed schema (design §11).
+export type PlanSessionFeedbackRow = Pick<
+  PlanSessionFeedbackTableRow,
+  | "id"
+  | "plan_id"
+  | "athlete_id"
+  | "week_number"
+  | "day_number"
+  | "created_at"
+  | "updated_at"
+> & {
+  feedback_text: PlanSessionFeedbackTableRow["feedback_text"];
+};
 
 export class PlanFeedbackValidationError extends Error {
   constructor() {

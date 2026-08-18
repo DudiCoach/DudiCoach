@@ -210,31 +210,52 @@ export type Database = {
           athlete_id: string
           created_at: string
           day_number: number
-          feedback_text: string
+          feedback_text: string | null
           id: string
+          pain_location: string | null
+          pain_score: number | null
+          pain_side: string | null
           plan_id: string
+          session_date: string | null
+          session_rpe: number | null
+          session_status: string | null
           updated_at: string
           week_number: number
+          wellbeing: number | null
         }
         Insert: {
           athlete_id: string
           created_at?: string
           day_number: number
-          feedback_text: string
+          feedback_text?: string | null
           id?: string
+          pain_location?: string | null
+          pain_score?: number | null
+          pain_side?: string | null
           plan_id: string
+          session_date?: string | null
+          session_rpe?: number | null
+          session_status?: string | null
           updated_at?: string
           week_number: number
+          wellbeing?: number | null
         }
         Update: {
           athlete_id?: string
           created_at?: string
           day_number?: number
-          feedback_text?: string
+          feedback_text?: string | null
           id?: string
+          pain_location?: string | null
+          pain_score?: number | null
+          pain_side?: string | null
           plan_id?: string
+          session_date?: string | null
+          session_rpe?: number | null
+          session_status?: string | null
           updated_at?: string
           week_number?: number
+          wellbeing?: number | null
         }
         Relationships: [
           {

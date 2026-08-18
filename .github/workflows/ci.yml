@@ -73,3 +73,24 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+
+  supabase-db:
+    name: supabase-db
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Setup Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          rootless: false
+      - name: Install deps
+        run: npm ci
+      - name: Supabase migration verification
+        run: bash scripts/verify-migrations.sh
