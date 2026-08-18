@@ -36,6 +36,7 @@
 | US-019 | Dashboard hydration - initialData w useAthletes query | EPIC-A | P2 | XS | Done | Review Approve 2026-04-20; impl 52af115 |
 | US-011 | Kontuzje zawodnika - lista z severity | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `4/4 passed` (2026-04-24); E2E/runtime closed |
 | US-012 | Testy sprawnosciowe - dynamiczne per sport | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `8/8 passed` (2026-04-24); E2E/runtime closed |
+| US-025 | Panel zawodnika - wyswietlanie planu treningowego | EPIC-B | P1 | M | Done | PR #30 + smoke #31; production E2E 16/4/0 (16 passed, 4 skipped by design) + G9 2026-08-18 |
 
 ## Operational Notes (2026-04-15)
 
@@ -48,6 +49,15 @@
 - US-003 auto-save race in E2E was stabilized by waiting for persisted API snapshot before back navigation.
 - Full E2E suite executed on PR #6 preview after env/redeploy: `22 passed`, `2 skipped`, `0 failed`.
 - US-011: dedicated Playwright spec added (`tests/e2e/US-011.spec.ts`); local run result `0 passed`, `4 skipped`, `0 failed` due missing `E2E_COACH_EMAIL` / `E2E_COACH_PASSWORD`.
+
+## Operational Notes (2026-08-18)
+
+- US-025 closed: production E2E smoke passed (16 passed / 0 failed, desktop + mobile,
+  `main@b7e9355`) — evidence `qa/e2e/US-025-report.md`; story status → Done.
+- US-014 (session feedback) and US-026 (async plan generation) are implemented and merged
+  (US-014: PRs #59-#62; US-026: PRs #40-#45), but their story files still say `Ready` and
+  no `reviews/US-014-review.md` / `reviews/US-026-review.md` exists. Formal review + status
+  reconciliation is an open follow-up — do not mark them Done until review artifacts exist.
 
 ## Backlog - v1.1 (post-MVP)
 

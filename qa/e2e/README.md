@@ -8,6 +8,27 @@ Current Playwright suite covers:
 - `US-004.spec.ts` -> share code panel + realtime
 - `US-005.spec.ts` -> AI plan generation
 - `US-011.spec.ts` -> injuries tab CRUD + public active-only injuries view
+- `US-025.spec.ts` -> public plan endpoint + athlete panel plan viewer (production smoke, fixture-gated)
+
+## US-025 production smoke (G9 closeout)
+
+`tests/e2e/US-025.spec.ts` verifies the public plans API and the plan viewer
+against a deployed environment. Plan generation runs through the AI pipeline,
+so fixtures are synthetic athletes prepared out-of-band (service-role seed)
+and deleted after the run:
+
+- `E2E_US025_PLAN_SHARE_CODE` — active code, synthetic athlete with **two**
+  plans (newest = `E2E_US025_EXPECTED_PLAN_ID`)
+- `E2E_US025_EMPTY_SHARE_CODE` — active code, no plans
+- `E2E_US025_INACTIVE_SHARE_CODE` — inactive code that owns a plan
+- `E2E_US025_RETIRED_SHARE_CODE` — well-formed code that no longer resolves
+- `E2E_US025_EXPECTED_PLAN_ID` — id of the newest plan
+- `E2E_US025_OLDER_PLAN_NAME` (optional) — older plan name, asserted absent
+
+All codes must be uppercase, distinct and match `^[A-HJ-NP-Z2-9]{6}$`. The
+spec fails hard in CI when the plan fixture is missing. Codes are bearer
+credentials — never commit them; keep trace/screenshot/video disabled (the
+spec forces them off).
 
 ## Required Environment Variables
 

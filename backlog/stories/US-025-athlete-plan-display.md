@@ -4,12 +4,12 @@ title: Athlete Public Panel - Training Plan Display
 role: zawodnik
 priority: P1
 estimate: M
-status: InDevTests
+status: Done
 dependencies: [US-004, US-005, US-011]
 epic: EPIC-B
 design_required: true
 created: 2026-04-24
-updated: 2026-04-24
+updated: 2026-08-18
 sprint: Sprint 3
 ---
 
@@ -49,15 +49,15 @@ Wtedy otrzymuję stronę 404
 
 ## Definition of Done
 
-- [ ] Migration applied and reviewed
-- [ ] RLS / SECURITY DEFINER audited
-- [ ] Integration tests pass (plans-route.test.ts — 6/6)
-- [ ] TypeScript strict — no errors
-- [ ] ESLint clean — no warnings
-- [ ] Frontend component implemented
-- [ ] E2E test
-- [ ] Code review approved
-- [ ] Deployed
+- [x] Migration applied and reviewed
+- [x] RLS / SECURITY DEFINER audited
+- [x] Integration tests pass (plans-route.test.ts — 11/11)
+- [x] TypeScript strict — no errors
+- [x] ESLint clean — no warnings
+- [x] Frontend component implemented
+- [x] E2E test
+- [x] Code review approved
+- [x] Deployed
 
 ## Implementation Log
 
@@ -67,7 +67,7 @@ Files created:
 - `supabase/migrations/20260424120000_US-025_public_plan_rpc.sql` — SECURITY DEFINER RPC `get_latest_plan_by_share_code(char)`, grants to `anon` + `authenticated`
 - `lib/types/plan-public.ts` — `PublicTrainingPlan` interface (sanitized, no `athlete_id`)
 - `app/api/athlete/[shareCode]/plans/route.ts` — `GET /api/athlete/[shareCode]/plans`, public endpoint
-- `tests/integration/athlete/plans-route.test.ts` — 6 integration tests, all passing
+- `tests/integration/athlete/plans-route.test.ts` — 11 integration tests, all passing
 
 Files modified:
 - `lib/supabase/database.types.ts` — added `get_latest_plan_by_share_code` to `Functions` map (manual update; regenerate with `supabase gen types` once migration is applied to local Supabase)
@@ -76,9 +76,20 @@ Files modified:
 Checks:
 - `npx tsc --noEmit` — PASS (0 errors)
 - `npx eslint ... --max-warnings 0` — PASS (0 warnings)
-- `npx vitest run tests/integration/athlete/plans-route.test.ts` — PASS (6/6)
+- `npx vitest run tests/integration/athlete/plans-route.test.ts` — PASS (11/11)
 
 Frontend files already present (authored by a prior agent pass):
 - `components/athlete/PlanPublicSection.tsx` — read-only plan viewer
 - `components/athlete/AthletePanel.tsx` — accepts `initialPlan` prop, renders `PlanPublicSection`
 - `app/(athlete)/[shareCode]/page.tsx` — fetches three parallel RPCs
+
+### G9 closeout — 2026-08-18
+
+- Added `tests/e2e/US-025.spec.ts` — production smoke (fixture-gated, no codes committed):
+  exact public shape, latest-plan selection, empty state, inactive/retired/malformed 404s,
+  UI rendering + week navigation on desktop and mobile.
+- Production run against `main@b7e9355`: 16 passed / 4 skipped by design / 0 failed.
+- Endpoint latency (30 probes): p50 485ms, p99 732ms, 0 errors.
+- Fixture cleanup verified; all fixture codes return 404 after the run.
+- Evidence: `qa/e2e/US-025-report.md`, `reviews/US-025-review.md` (§ G9 closeout).
+- Checks: lint PASS, `tsc --noEmit` PASS, vitest 447/447 PASS, `next build` PASS.
