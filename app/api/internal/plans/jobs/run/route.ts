@@ -28,7 +28,7 @@ import {
 const WORKER_SECRET_HEADER = "x-plan-jobs-worker-secret";
 const AUTHORIZATION_HEADER = "authorization";
 const RETRYABLE_STATUS_CODES = new Set([500, 502, 503, 529]);
-const CLAIM_LOCK_SECONDS = 120;
+const CLAIM_LOCK_SECONDS = 180;
 
 export const maxDuration = 180;
 
@@ -102,6 +102,9 @@ function logGenerationMetadata(
 }
 
 function isRetryableGenerationError(error: unknown) {
+  if (error instanceof Anthropic.APIConnectionTimeoutError) {
+    return true;
+  }
   if (error instanceof Anthropic.APIError) {
     return RETRYABLE_STATUS_CODES.has(error.status ?? 0);
   }
@@ -540,7 +543,7 @@ export async function GET(request: NextRequest) {
 
   const incomingBearer = extractBearerSecret(request);
   if (!incomingBearer || !secureEquals(incomingBearer, expectedCronSecret)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return new Response(null, { status: 401 });
   }
 
   return runWorker("GET /api/internal/plans/jobs/run");
@@ -562,7 +565,7 @@ export async function POST(request: NextRequest) {
 
   const incomingSecret = extractManualWorkerSecret(request);
   if (!incomingSecret || !secureEquals(incomingSecret, expectedSecret)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return new Response(null, { status: 401 });
   }
 
   return runWorker("POST /api/internal/plans/jobs/run");

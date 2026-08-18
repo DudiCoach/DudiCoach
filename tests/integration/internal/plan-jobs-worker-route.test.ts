@@ -195,12 +195,11 @@ describe("GET /api/internal/plans/jobs/run", () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when cron bearer is missing", async () => {
+  it("returns 401 with empty body when cron bearer is missing", async () => {
     const response = await GET(makeRequest({ method: "GET" }) as Parameters<typeof GET>[0]);
-    const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe("Unauthorized");
+    expect(await response.text()).toBe("");
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
@@ -215,7 +214,7 @@ describe("GET /api/internal/plans/jobs/run", () => {
     expect(response.status).toBe(200);
     expect(json.processed).toBe(false);
     expect(mockRpc).toHaveBeenCalledWith("claim_pending_plan_generation_job", {
-      p_lock_seconds: 120,
+      p_lock_seconds: 180,
     });
   });
 });
@@ -244,6 +243,16 @@ describe("POST /api/internal/plans/jobs/run", () => {
 
     expect(response.status).toBe(200);
     expect(json.processed).toBe(false);
+  });
+
+  it("returns 401 with empty body when worker secret is missing", async () => {
+    const response = await POST(
+      makeRequest({}) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.text()).toBe("");
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("all 4 weeks succeed -> job succeeded + plan inserted", async () => {
@@ -433,6 +442,39 @@ describe("POST /api/internal/plans/jobs/run", () => {
       p_claim_token: CLAIMED_JOB.claim_token,
       p_error_code: "provider_api_error",
       p_error_message: "provider unavailable",
+      p_retryable: true,
+    });
+  });
+
+  it("queues retry on Anthropic connection timeout", async () => {
+    const timeoutError = new Error("request timed out");
+    Object.setPrototypeOf(
+      timeoutError,
+      Anthropic.APIConnectionTimeoutError.prototype,
+    );
+
+    mockRpc
+      .mockResolvedValueOnce({ data: [CLAIMED_JOB], error: null })
+      .mockResolvedValueOnce({
+        data: [{ job_id: CLAIMED_JOB.id, status: "queued" }],
+        error: null,
+      });
+
+    mockGeneratePlanHeaderStructured.mockRejectedValueOnce(new Error("structured unavailable"));
+    mockGeneratePlanWithMetadata.mockRejectedValueOnce(timeoutError);
+
+    const response = await POST(
+      makeRequest({ workerSecret: WORKER_SECRET }) as Parameters<typeof POST>[0],
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.status).toBe("queued");
+    expect(mockRpc).toHaveBeenNthCalledWith(2, "fail_plan_generation_job", {
+      p_job_id: CLAIMED_JOB.id,
+      p_claim_token: CLAIMED_JOB.claim_token,
+      p_error_code: "provider_timeout",
+      p_error_message: "request timed out",
       p_retryable: true,
     });
   });

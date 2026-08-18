@@ -17,6 +17,7 @@ import {
 const mockFetchPlans = vi.fn();
 const mockStartPlanGenerationJob = vi.fn();
 const mockFetchPlanGenerationJobStatus = vi.fn();
+const mockGeneratePlan = vi.fn();
 
 vi.mock("@/lib/api/plans", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/plans")>(
@@ -29,6 +30,7 @@ vi.mock("@/lib/api/plans", async () => {
       mockStartPlanGenerationJob(...(args as [])),
     fetchPlanGenerationJobStatus: (...args: unknown[]) =>
       mockFetchPlanGenerationJobStatus(...(args as [])),
+    generatePlan: (...args: unknown[]) => mockGeneratePlan(...(args as [])),
   };
 });
 
@@ -158,6 +160,7 @@ describe("PlanTabContent async plan generation flow", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   it("shows idle state by default", async () => {
@@ -268,7 +271,7 @@ describe("PlanTabContent async plan generation flow", () => {
     });
   });
 
-  it("shows informational long-running state and continues polling after timeout", async () => {
+  it("shows informational long-running state and stops polling after timeout", async () => {
     vi.useFakeTimers();
     mockFetchPlanGenerationJobStatus.mockResolvedValue(
       makeJob({ status: "processing" }),
@@ -305,9 +308,29 @@ describe("PlanTabContent async plan generation flow", () => {
       await Promise.resolve();
     });
 
-    expect(mockFetchPlanGenerationJobStatus.mock.calls.length).toBeGreaterThan(
+    expect(mockFetchPlanGenerationJobStatus.mock.calls.length).toBe(
       callsAtTimeout,
     );
+  });
+
+  it("uses sync generation flow when NEXT_PUBLIC_PLAN_GENERATION_MODE=sync", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLAN_GENERATION_MODE", "sync");
+    mockGeneratePlan.mockResolvedValue(makePlan({ id: "plan-sync-1" }));
+    mockFetchPlans.mockResolvedValue([makePlan()]);
+
+    const { Wrapper } = createWrapper();
+    render(<PlanTabContent athlete={makeAthlete()} />, { wrapper: Wrapper });
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: pl.coach.athlete.plans.generateButton,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockGeneratePlan).toHaveBeenCalledWith("athlete-1");
+      expect(mockStartPlanGenerationJob).not.toHaveBeenCalled();
+    });
   });
 
   it("handles duplicate active job (409) gracefully", async () => {
