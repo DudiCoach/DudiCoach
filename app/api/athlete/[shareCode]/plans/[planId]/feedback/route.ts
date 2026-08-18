@@ -17,7 +17,7 @@ type PlanSessionFeedbackRow = {
   athlete_id: string;
   week_number: number;
   day_number: number;
-  feedback_text: string;
+  feedback_text: string | null;
   created_at: string;
   updated_at: string;
 };

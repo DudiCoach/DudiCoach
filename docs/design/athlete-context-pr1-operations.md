@@ -40,10 +40,21 @@ that a concurrent direct-RPC write could later invalidate.
   Phase 2a upgrade pre-check rejects a whitespace-only legacy row.
   Phase 2b upgrade replay on a 17-migration DB with legacy rows, then full
   security + behavior matrix + legacy-preservation asserts.
+- Same suite green in CI (`supabase-db` job, ~4 min) on every PR/push.
 - `npm run lint`, `npm run typecheck`, `npx vitest run` (447 tests),
   `npm run build` — all green on the PR branch.
 - Supabase Preview: blocked without `SUPABASE_ACCESS_TOKEN` (documented
   residual; local-stack replay covers the same SQL deterministically).
+
+### Rollout preparation
+
+- Before merging, bound the migration's ACCESS EXCLUSIVE window on the
+  production table: run the pre-check count query read-only and time it
+  (it is the dominant lock cost; the count query is the SELECT in
+  `20260727120000`'s first DO block):
+  `explain analyze select count(*) from public.plan_session_feedback psf where psf.feedback_text is null or psf.feedback_text !~ '[^[:space:]]' or length(regexp_replace(psf.feedback_text, '^[[:space:]]+|[[:space:]]+$', '', 'g')) not between 1 and 2000;`
+- Plan a maintenance window if that scan takes longer than the allowed write
+  pause (expected: seconds at realistic table sizes).
 
 ## 3. G9 production verification (post-merge, before closeout)
 
@@ -92,6 +103,12 @@ where schemaname='public' and tablename='plan_session_feedback'
 Re-smoke the existing text feedback add/edit/read paths (public RPC
 `upsert_plan_session_feedback` text-only and coach display) without logging
 feedback content.
+
+During the rollout itself, enable `\timing` for the two migration files to
+confirm bounded duration, especially `20260727120001` (the VALIDATE scan).
+If validation ever fails, the constraints remain NOT VALID (enforced on new
+writes only): fix the offending legacy rows, then re-run the failed
+`VALIDATE CONSTRAINT` statement.
 
 ## 4. Monitoring
 

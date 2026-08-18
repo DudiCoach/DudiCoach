@@ -5,15 +5,25 @@
 -- Lane C. Design: docs/design/athlete-context-system-design.md §3, §10, §11.
 --
 -- Lock profile (this file's transaction):
---   - ADD COLUMN x7 .......... ACCESS EXCLUSIVE, metadata-only (no DEFAULT, no NOT NULL) - fast
---   - ADD CONSTRAINT x3 ...... ACCESS EXCLUSIVE, NOT VALID - no table scan - fast
---   - DROP CONSTRAINT / ALTER COLUMN DROP NOT NULL - ACCESS EXCLUSIVE, no scan - fast
+--   The table is locked ACCESS EXCLUSIVE from the very first statement, so the
+--   lock covers the legacy-row pre-check scan and both assert blocks in
+--   addition to the DDL below. This is intentional: it serializes against
+--   concurrent direct-RPC writes that the pre-check's MVCC snapshot could
+--   otherwise miss (a TAB/CR/LF-only row would pass the legacy space-only
+--   rule and later fail VALIDATE CONSTRAINT). The window is the sum of a
+--   small-table count scan plus fast metadata-only DDL:
+--   - ADD COLUMN x7 .......... metadata-only (no DEFAULT, no NOT NULL) - fast
+--   - ADD CONSTRAINT x3 ...... NOT VALID - no table scan - fast
+--   - DROP CONSTRAINT / ALTER COLUMN DROP NOT NULL - no scan - fast
 --   - CREATE INDEX ........... SHARE (brief write block; small table)
---   - CREATE FUNCTION/TRIGGER - brief ACCESS EXCLUSIVE
+--   - CREATE TRIGGER ......... SHARE ROW EXCLUSIVE (brief write block)
 --   The expensive VALIDATE CONSTRAINT scans run in the NEXT transaction
 --   (20260727120001) under SHARE UPDATE EXCLUSIVE, which does not block
 --   concurrent INSERT/UPDATE/DELETE. Splitting the files bounds the
---   ACCESS EXCLUSIVE window to the fast DDL above.
+--   ACCESS EXCLUSIVE window to the count scan and fast DDL above.
+--   NOT VALID constraints are enforced on every new INSERT/UPDATE after
+--   creation, so no violating row can appear between the two migrations and
+--   VALIDATE cannot race a concurrent write.
 
 begin;
 

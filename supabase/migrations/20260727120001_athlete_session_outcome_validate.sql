@@ -2,9 +2,15 @@
 -- Lane C. Design: docs/design/athlete-context-system-design.md §10, §11.
 --
 -- VALIDATE CONSTRAINT acquires SHARE UPDATE EXCLUSIVE, which does not block
--- concurrent INSERT/UPDATE/DELETE. Running it in a separate transaction
--- (after 20260727120000 committed) bounds the ACCESS EXCLUSIVE window of the
--- DDL phase and lets writes continue during the validation scan.
+-- concurrent INSERT/UPDATE/DELETE (it conflicts with concurrent VALIDATE,
+-- VACUUM, and SHARE-level DDL such as CREATE INDEX — negligible on this
+-- table). Running it in a separate transaction (after 20260727120000
+-- committed) bounds the ACCESS EXCLUSIVE window of the DDL phase and lets
+-- writes continue during the validation scan. The constraints are NOT VALID
+-- until this phase; they are still enforced on every new INSERT/UPDATE, so
+-- no violating row can be written in between. If validation ever fails, the
+-- constraints remain NOT VALID: fix the offending legacy rows, then re-run
+-- the failed VALIDATE CONSTRAINT statement.
 
 begin;
 

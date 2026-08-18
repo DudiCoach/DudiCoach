@@ -149,7 +149,7 @@ export default function PublicDayFeedbackSection({
         feedbackText: validation.sanitized,
       });
 
-      setDraft(row.feedback_text);
+      setDraft(row.feedback_text ?? "");
       setIsSaved(true);
       setFieldError(null);
     } catch (error) {
