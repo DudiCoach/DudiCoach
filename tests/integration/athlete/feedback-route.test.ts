@@ -138,6 +138,7 @@ describe("POST /api/athlete/[shareCode]/plans/[planId]/feedback", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(json.data.feedback_text).toBe("Dobry trening.\nWysokie tetno.");
     expect(mockRpc).toHaveBeenCalledWith("upsert_plan_session_feedback", {
       p_code: "ABC234",
@@ -207,6 +208,7 @@ describe("GET /api/athlete/[shareCode]/plans/[planId]/feedback", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(json.data.id).toBe(FEEDBACK_ROW.id);
     expect(mockRpc).toHaveBeenCalledWith(
       "get_plan_session_feedback_by_share_code",

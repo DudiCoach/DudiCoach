@@ -92,4 +92,12 @@ Frontend files already present (authored by a prior agent pass):
 - Endpoint latency (30 probes): p50 485ms, p99 732ms, 0 errors.
 - Fixture cleanup verified; all fixture codes return 404 after the run.
 - Evidence: `qa/e2e/US-025-report.md`, `reviews/US-025-review.md` (§ G9 closeout).
+- Cache headers: `GET /api/athlete/[shareCode]/plans` and the public feedback
+  route return `Cache-Control: no-store` (personalized data — no CDN caching),
+  added in `chore/us-014-us-026-reconcile` (PR #71 follow-up, 2026-08-19).
+- Log review (G9 item): code-path verification clean — no `share_code`,
+  `prompt_inputs`, or raw Claude responses in route logs (verified by review).
+  Runtime log-window review of Vercel/Supabase logs for the E2E run window is a
+  documented manual step for the operator (no log access from CI environment) —
+  see `qa/e2e/US-025-report.md` § Residual limitations.
 - Checks: lint PASS, `tsc --noEmit` PASS, vitest 447/447 PASS, `next build` PASS.

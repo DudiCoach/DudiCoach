@@ -100,7 +100,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: row });
+  // Personalized data gated by share code: never cache.
+  return NextResponse.json(
+    { data: row },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 /**
@@ -160,5 +164,9 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   }
 
   const row = toFeedbackRow(data);
-  return NextResponse.json({ data: row ?? null });
+  // Personalized data gated by share code: never cache.
+  return NextResponse.json(
+    { data: row ?? null },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

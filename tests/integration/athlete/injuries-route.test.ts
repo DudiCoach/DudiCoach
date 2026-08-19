@@ -46,6 +46,7 @@ describe("GET /api/athlete/[shareCode]/injuries (public endpoint)", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(json.data).toEqual([]);
     expect(mockRpc).toHaveBeenCalledWith("get_active_injuries_by_share_code", {
       p_code: "ABC234",

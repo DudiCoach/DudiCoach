@@ -78,5 +78,10 @@ export async function GET(
       }
     : null;
 
-  return NextResponse.json({ data: row });
+  // Personalized data gated by share code: never cache (no-store) so a CDN
+  // cannot serve one athlete's plan (or a stale version) to another request.
+  return NextResponse.json(
+    { data: row },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

@@ -11,6 +11,10 @@ type PageProps = { params: Promise<{ shareCode: string }> };
 
 const SHARE_CODE_REGEX = /^[A-HJ-NP-Z2-9]{6}$/;
 
+// Personalized data gated by share code: never statically prerender this page
+// (defense-in-depth; createClient/cookies already forces dynamic rendering).
+export const dynamic = "force-dynamic";
+
 /**
  * Public athlete panel page. Validates the share code, fetches initial
  * profile via SECURITY DEFINER RPC, then hands off to a client component

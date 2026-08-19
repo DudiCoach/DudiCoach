@@ -75,4 +75,21 @@ describe("GET /api/athlete/[shareCode] (public endpoint)", () => {
       p_code: "DEF234",
     });
   });
+
+  it("valid active code -> 200 profile row with Cache-Control no-store", async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ id: "a1", name: "Jan", share_code: "ABC234" }],
+      error: null,
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/athlete/ABC234") as Parameters<typeof GET>[0],
+      routeContext("ABC234"),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(json.data.name).toBe("Jan");
+  });
 });
