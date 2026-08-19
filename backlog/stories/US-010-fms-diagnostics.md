@@ -4,13 +4,14 @@ title: Diagnostyka FMS - baza miesni + searchable dropdown
 role: trener
 priority: P1
 estimate: XL
-status: Draft
+status: Done
 dependencies: [US-002, US-003]
 epic: EPIC-A
 design_required: true
 created: 2026-08-19
 updated: 2026-08-19
 sprint: Sprint 3 (Athlete Health Data)
+merged_pr: 77
 ---
 
 # US-010 — Diagnostyka FMS (bieżące znaleziska)
