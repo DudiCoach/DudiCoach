@@ -132,6 +132,38 @@ describe("DiagnosticsTab", () => {
     expect(screen.getAllByTestId("diagnostic-card")).toHaveLength(2);
   });
 
+  it("orders findings within a region by severity (dysfunction first) then date", () => {
+    setupQuery({
+      data: [
+        makeFinding({
+          id: "f1",
+          muscle_key: "anterior_deltoid",
+          severity: "weak",
+          observed_at: "2026-08-19",
+        }),
+        makeFinding({
+          id: "f2",
+          muscle_key: "supraspinatus",
+          severity: "dysfunction",
+          observed_at: "2026-08-18",
+        }),
+        makeFinding({
+          id: "f3",
+          muscle_key: "trapezius_upper",
+          severity: "weak",
+          observed_at: "2026-08-20",
+        }),
+      ],
+    });
+    render(<DiagnosticsTab athlete={makeAthlete()} />);
+
+    const cards = screen.getAllByTestId("diagnostic-card");
+    expect(cards).toHaveLength(3);
+    expect(cards[0].textContent).toBe("supraspinatus");
+    expect(cards[1].textContent).toBe("trapezius_upper");
+    expect(cards[2].textContent).toBe("anterior_deltoid");
+  });
+
   it("toggles the create form via the add button", () => {
     setupQuery({ data: [] });
     render(<DiagnosticsTab athlete={makeAthlete()} />);

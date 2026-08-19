@@ -43,7 +43,7 @@ create table public.diagnostic_findings (
   muscle_key  text        not null,
   side        text        not null check (side in ('left', 'right')),
   severity    text        not null check (severity in ('weak', 'very_weak', 'dysfunction')),
-  notes       text,
+  notes       varchar(1000),
   observed_at date        not null default current_date,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
@@ -128,11 +128,13 @@ EXTENDS it: the injuries routes do not map unique conflicts, so diagnostics
 adds explicit `23505`→409 handling.
 
 - `GET /api/athletes/[id]/diagnostics` → `{ data: DiagnosticFinding[] }`
-  ordered by `observed_at desc, created_at desc`.
+  ordered by `observed_at desc, created_at desc`; `Cache-Control: no-store`
+  (health data).
 - `POST /api/athletes/[id]/diagnostics` → 201 `{ data }`; 409 on unique
   conflict (body: `"Znalezisko dla tego mięśnia i strony już istnieje."`).
 - `PATCH /api/athletes/[id]/diagnostics/[findingId]` → 200; partial update;
-  severity/notes/observed_at/side/muscle_key all allowed; 409 on conflict.
+  severity/notes/observed_at/side/muscle_key all allowed; 409 on conflict;
+  400 on an empty body (nothing to update).
 - `DELETE /api/athletes/[id]/diagnostics/[findingId]` → 204; 404 unknown id.
 
 `lib/validation/diagnostic.ts`:
@@ -143,10 +145,17 @@ createDiagnosticSchema = z.object({
   side: z.enum(["left", "right"]),
   severity: z.enum(["weak", "very_weak", "dysfunction"]),
   notes: z.string().max(1000).nullish(),
-  observed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // default today in UI
+  observed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) // default today in UI
+    .refine(calendar-valid date), // deviation: shape-only regex let
+                                   // impossible dates (2026-02-31) reach the
+                                   // DB and surface as generic 500s
 });
 updateDiagnosticSchema = createDiagnosticSchema.partial();
 ```
+
+Implementation deviation (security): the schema-level `notes` cap is mirrored
+in the DB as `notes varchar(1000)` (the app's own access path is direct
+PostgREST as `authenticated`, so the DB must enforce the cap too).
 
 ## 6. UI
 
@@ -158,9 +167,10 @@ updateDiagnosticSchema = createDiagnosticSchema.partial();
   (Lewa/Prawa), severity 3-button group (Słaby / Bardzo słaby / Dysfunkcja),
   date input (default today), notes textarea. Submit disabled until
   muscle + severity present (AC-7).
-- List: grouped sections Góra 💪 / Dół 🦵 / Stopa 🦶, ordered by severity
-  then date; each finding shows muscle (Polska (Latin)), side badge,
-  severity badge, date, notes.
+- List: grouped sections Góra / Dół / Stopa; within a group ordered by
+  severity (dysfunction first, then very_weak, then weak) and by
+  `observed_at` descending as tiebreak; each finding shows muscle
+  (Polska (Latin)), side badge, severity badge, date, notes.
 - Inline edit (expanded card, auto-save via `useAutoSave` pattern from
   injuries/edit forms): severity select, notes, date.
 - Delete: confirm dialog (native `confirm`, like InjuriesTab).
@@ -172,9 +182,10 @@ updateDiagnosticSchema = createDiagnosticSchema.partial();
 
 ## 7. Types
 
-Regenerate `lib/supabase/database.types.ts` after the migration
-(`npx supabase gen types typescript` against the local stack), then
-`DiagnosticFinding = Tables<"diagnostic_findings">`.
+The `diagnostic_findings` entry in `lib/supabase/database.types.ts` was added
+by hand (generator unavailable on the local stack; verified against the
+migration). Regenerate with `npx supabase gen types typescript` when the
+generator is available, then `DiagnosticFinding = Tables<"diagnostic_findings">`.
 
 ## 8. Verification
 
@@ -196,10 +207,20 @@ PATCH partial, 404 unknown finding, DELETE 204/404, ordering.
 
 - `tests/unit/lib/constants/muscles.test.ts` — 68 entries, unique keys,
   region counts (30/24/14), no key collisions with latin/pl names.
-- `tests/unit/lib/validation/diagnostic.test.ts` — zod cases.
-- `tests/unit/components/coach/DiagnosticsTab.test.tsx` — search filter,
-  keyboard selection, grouping, empty state, 409 message, disabled submit,
-  edit autosave, delete confirm.
+- `tests/unit/lib/validation/diagnostic.test.ts` — zod cases (incl.
+  calendar-impossible date rejection).
+- `tests/unit/components/coach/MuscleCombobox.test.tsx` — search filter
+  (Polish/Latin, diacritic-insensitive), keyboard selection (arrows/Enter/
+  Escape), click selection, ARIA combobox contract.
+- `tests/unit/components/coach/DiagnosticCreateForm.test.tsx` — disabled
+  submit until muscle chosen, payload + close on success, server error
+  (409) message, submitting state.
+- `tests/unit/components/coach/DiagnosticCard.test.tsx` — severity
+  auto-save + saved state, rollback on failed save, no re-PATCH on
+  unchanged blur, delete confirm.
+- `tests/unit/components/coach/DiagnosticsTab.test.tsx` — loading/empty/
+  error+retry, region grouping, severity+date ordering, create-form toggle,
+  submit-disabled state.
 
 ### E2E — `tests/e2e/US-010.spec.ts`
 

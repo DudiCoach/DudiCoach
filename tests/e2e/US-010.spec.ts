@@ -16,7 +16,9 @@ import {
  *  - AC-5: inline edit with auto-save
  *  - AC-6: delete with confirmation
  *  - AC-7: form validation (submit disabled without muscle/severity)
- *  - AC-8: ownership - covered by SQL gates + integration tests (not in E2E)
+ *  - AC-8: ownership - proven by SQL gates (tests/sql/us010-fms-gates.sql,
+ *    G11/G12/G13 behavioral RLS checks); integration tests mock the client so
+ *    RLS never executes there (not covered in E2E)
  *
  * Authenticated scenarios are skipped unless E2E_COACH_EMAIL +
  * E2E_COACH_PASSWORD are set.
@@ -164,7 +166,6 @@ test.describe("US-010 - FMS diagnostics", () => {
       await combobox.click();
       await combobox.fill("deltoid");
       await expect(page.getByRole("option")).toHaveCount(3);
-      await combobox.press("ArrowDown");
       await combobox.press("Enter");
       await expect(combobox).toHaveAttribute(
         "placeholder",

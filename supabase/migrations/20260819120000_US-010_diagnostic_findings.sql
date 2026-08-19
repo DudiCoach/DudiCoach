@@ -18,7 +18,7 @@ create table public.diagnostic_findings (
   muscle_key  text        not null,
   side        text        not null check (side in ('left', 'right')),
   severity    text        not null check (severity in ('weak', 'very_weak', 'dysfunction')),
-  notes       text,
+  notes       varchar(1000),
   observed_at date        not null default current_date,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
@@ -112,11 +112,12 @@ create policy "diagnostic_findings_delete_own"
 --
 -- Explicit grants mirror Supabase cloud defaults (the local dev stack omits
 -- them, and the app accesses the table via PostgREST as `authenticated`).
--- `anon` gets grants but has no policies, so RLS denies every anon access.
+-- `anon` gets SELECT only (cloud default is all-DML, but least privilege wins
+-- here); with no anon policies RLS denies every anon access.
 -- ---------------------------------------------------------------------------
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.diagnostic_findings TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.diagnostic_findings TO anon;
+GRANT SELECT ON TABLE public.diagnostic_findings TO anon;
 
 -- RLS policies read athletes.coach_id (owner check) as `authenticated`; the
 -- cloud grants already allow this, the local dev stack does not. Idempotent.

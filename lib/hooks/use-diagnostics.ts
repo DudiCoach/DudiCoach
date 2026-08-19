@@ -8,7 +8,6 @@ import {
   diagnosticKeys,
   fetchDiagnostics,
   updateDiagnostic,
-  type DiagnosticFinding,
 } from "@/lib/api/diagnostics";
 import type {
   CreateDiagnosticInput,
@@ -45,14 +44,10 @@ export function useUpdateDiagnostic(athleteId: string) {
   return useMutation({
     mutationFn: ({ findingId, input }: UpdateDiagnosticMutationInput) =>
       updateDiagnostic(athleteId, findingId, input),
-    onSuccess: (updated: DiagnosticFinding) => {
-      queryClient.setQueryData(
-        diagnosticKeys.list(athleteId),
-        (previous: DiagnosticFinding[] | undefined) =>
-          previous?.map((finding) =>
-            finding.id === updated.id ? updated : finding,
-          ) ?? [updated],
-      );
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: diagnosticKeys.list(athleteId),
+      });
     },
   });
 }

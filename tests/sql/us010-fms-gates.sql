@@ -20,8 +20,9 @@ declare
   v_athlete_b uuid := 'a0000000-0000-0000-0000-000000000003';
   v_n integer;
   v_id uuid;
+  v_text text;
 begin
-  -- G01: schema - required columns exist with expected nullability.
+  -- G01: all required columns exist.
   select count(*) into v_n
   from information_schema.columns c
   where c.table_schema = 'public'
@@ -36,17 +37,17 @@ begin
     insert into us010_result values ('g01_columns', 'columns=' || v_n);
   end if;
 
-  -- G02: unique constraint on (athlete_id, muscle_key, side).
-  if exists (
-    select 1 from pg_constraint c
-    where c.conrelid = 'public.diagnostic_findings'::regclass
-      and c.conname = 'diagnostic_findings_unique_current'
-      and c.contype = 'u'
-      and c.conkey is not null
-  ) then
+  -- G02: unique constraint covers exactly (athlete_id, muscle_key, side).
+  select array_agg(a.attname order by a.attnum) into v_text
+  from pg_constraint c
+  join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+  where c.conrelid = 'public.diagnostic_findings'::regclass
+    and c.conname = 'diagnostic_findings_unique_current'
+    and c.contype = 'u';
+  if v_text = '{athlete_id,muscle_key,side}' then
     insert into us010_result values ('g02_unique_constraint', 'pass');
   else
-    insert into us010_result values ('g02_unique_constraint', 'missing');
+    insert into us010_result values ('g02_unique_constraint', 'keys=' || coalesce(v_text, 'missing'));
   end if;
 
   -- G03: index (athlete_id, observed_at desc).
@@ -62,17 +63,18 @@ begin
     insert into us010_result values ('g03_index', 'missing or wrong order');
   end if;
 
-  -- G04: updated_at trigger uses moddatetime.
-  if exists (
-    select 1 from pg_trigger t
-    where t.tgrelid = 'public.diagnostic_findings'::regclass
-      and t.tgname = 'diagnostic_findings_updated_at'
-      and t.tgenabled <> 'D'
-      and not t.tgisinternal
-  ) then
+  -- G04: BEFORE UPDATE ROW trigger calling extensions.moddatetime.
+  select t.tgtype, p.proname into v_n, v_text
+  from pg_trigger t
+  join pg_proc p on p.oid = t.tgfoid
+  where t.tgrelid = 'public.diagnostic_findings'::regclass
+    and t.tgname = 'diagnostic_findings_updated_at'
+    and not t.tgisinternal;
+  -- tgtype bitmask: ROW=1, BEFORE=2, UPDATE=16 -> expect 1|2|16 = 19.
+  if v_n is not null and v_n & 19 = 19 and v_text = 'moddatetime' then
     insert into us010_result values ('g04_trigger', 'pass');
   else
-    insert into us010_result values ('g04_trigger', 'missing or disabled');
+    insert into us010_result values ('g04_trigger', 'tgtype=' || coalesce(v_n::text, 'null') || ' fn=' || coalesce(v_text, 'null'));
   end if;
 
   -- G05: RLS enabled.
@@ -245,9 +247,7 @@ begin
   end;
 
   update public.diagnostic_findings set severity = 'weak' where athlete_id = v_athlete_a;
-  select count(*) into v_n
-  from public.diagnostic_findings
-  where athlete_id = v_athlete_a;
+  get diagnostics v_n = row_count;
   if v_n = 0 then
     insert into us010_result values ('g12_cross_coach_update_denied', 'pass');
   else
@@ -255,9 +255,7 @@ begin
   end if;
 
   delete from public.diagnostic_findings where athlete_id = v_athlete_a;
-  select count(*) into v_n
-  from public.diagnostic_findings
-  where athlete_id = v_athlete_a;
+  get diagnostics v_n = row_count;
   if v_n = 0 then
     insert into us010_result values ('g12_cross_coach_delete_denied', 'pass');
   else
@@ -320,6 +318,29 @@ begin
     insert into us010_result values ('g14_cascade_delete', 'pass');
   else
     insert into us010_result values ('g14_cascade_delete', 'rows=' || v_n);
+  end if;
+end;
+$$;
+
+-- G15: notes column capped at 1000 chars (matches API validation; direct
+-- PostgREST writes cannot exceed the cap either).
+do $$
+declare
+  v_n integer;
+begin
+  select count(*) into v_n
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'diagnostic_findings'
+    and c.column_name = 'notes'
+    and c.character_maximum_length = 1000;
+  if v_n = 1 then
+    insert into us010_result values ('g15_notes_length_cap', 'pass');
+  else
+    insert into us010_result values ('g15_notes_length_cap', 'notes max length=' || coalesce(
+      (select c.character_maximum_length::text from information_schema.columns c
+       where c.table_schema = 'public' and c.table_name = 'diagnostic_findings' and c.column_name = 'notes'),
+      'none'));
   end if;
 end;
 $$;

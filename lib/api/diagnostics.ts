@@ -17,7 +17,8 @@ export async function fetchDiagnostics(
 ): Promise<DiagnosticFinding[]> {
   const response = await fetch(`/api/athletes/${athleteId}/diagnostics`);
   if (!response.ok) {
-    throw new Error("Failed to fetch diagnostics");
+    const json = (await response.json()) as { error?: string };
+    throw new Error(json.error ?? "Failed to fetch diagnostics");
   }
   const json = (await response.json()) as { data: DiagnosticFinding[] };
   return json.data;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { pl } from "@/lib/i18n/pl";
 import { useDeleteDiagnostic, useUpdateDiagnostic } from "@/lib/hooks/use-diagnostics";
@@ -25,6 +25,10 @@ export default function DiagnosticCard({
   const [observedAt, setObservedAt] = useState(finding.observed_at);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
+  const lastPersistedSeverity = useRef(finding.severity);
+  const lastPersistedNotes = useRef(finding.notes ?? "");
+  const lastPersistedObservedAt = useRef(finding.observed_at);
+
   const updateMutation = useUpdateDiagnostic(athleteId);
   const deleteMutation = useDeleteDiagnostic(athleteId);
 
@@ -45,8 +49,24 @@ export default function DiagnosticCard({
     updateMutation.mutate(
       { findingId: finding.id, input: patch },
       {
-        onSuccess: () => setSaveState("saved"),
-        onError: () => setSaveState("error"),
+        onSuccess: () => {
+          if (patch.severity !== undefined) {
+            lastPersistedSeverity.current = patch.severity;
+          }
+          if (patch.notes !== undefined) {
+            lastPersistedNotes.current = patch.notes ?? "";
+          }
+          if (patch.observed_at !== undefined) {
+            lastPersistedObservedAt.current = patch.observed_at;
+          }
+          setSaveState("saved");
+        },
+        onError: () => {
+          setSeverity(lastPersistedSeverity.current);
+          setNotes(lastPersistedNotes.current);
+          setObservedAt(lastPersistedObservedAt.current);
+          setSaveState("error");
+        },
       },
     );
   }
@@ -194,7 +214,7 @@ export default function DiagnosticCard({
               disabled={updateMutation.isPending}
               onChange={(event) => setNotes(event.target.value)}
               onBlur={() => {
-                if (notes === (finding.notes ?? "")) return;
+                if (notes === lastPersistedNotes.current) return;
                 persist({ notes: notes === "" ? null : notes });
               }}
               className="border-border bg-input text-foreground rounded-input w-full border px-3 py-2 text-sm resize-y disabled:cursor-not-allowed disabled:opacity-60"

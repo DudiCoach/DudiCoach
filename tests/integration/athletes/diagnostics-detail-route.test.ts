@@ -123,6 +123,20 @@ describe("PATCH /api/athletes/[id]/diagnostics/[findingId]", () => {
     expect(Array.isArray(json.issues)).toBe(true);
   });
 
+  it("returns 400 for an empty patch body", async () => {
+    setupAuthenticated();
+
+    const response = await PATCH(
+      makeRequest("PATCH", {}) as Parameters<typeof PATCH>[0],
+      routeContext(),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("Nie podano żadnych pól do aktualizacji.");
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when finding does not exist", async () => {
     setupAuthenticated();
     const builder = makeBuilder({
@@ -149,18 +163,22 @@ describe("PATCH /api/athletes/[id]/diagnostics/[findingId]", () => {
     });
     mockFrom.mockReturnValue(builder);
 
+    const patchBody = {
+      severity: FINDING.severity,
+      notes: FINDING.notes,
+      observed_at: FINDING.observed_at,
+    };
     const response = await PATCH(
-      makeRequest("PATCH", {
-        severity: FINDING.severity,
-        notes: FINDING.notes,
-        observed_at: FINDING.observed_at,
-      }) as Parameters<typeof PATCH>[0],
+      makeRequest("PATCH", patchBody) as Parameters<typeof PATCH>[0],
       routeContext(),
     );
     const json = await response.json();
 
     expect(response.status).toBe(200);
     expect(json.data).toEqual(FINDING);
+    expect(builder.update).toHaveBeenCalledWith(patchBody);
+    expect(builder.eq).toHaveBeenCalledWith("athlete_id", "athlete-uuid-001");
+    expect(builder.eq).toHaveBeenCalledWith("id", "finding-uuid-001");
   });
 
   it("returns 409 when the patch would collide with another finding", async () => {

@@ -89,6 +89,12 @@ export default function MuscleCombobox({
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveIndex((prev) => Math.max(prev - 1, 0));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(results.length - 1);
     } else if (event.key === "Enter") {
       event.preventDefault();
       const muscle = results[activeIndex];
@@ -105,6 +111,7 @@ export default function MuscleCombobox({
         id={id}
         type="text"
         role="combobox"
+        aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={`${id}-listbox`}
         aria-activedescendant={

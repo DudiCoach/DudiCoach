@@ -16,8 +16,18 @@ interface DiagnosticsTabProps {
 
 const REGION_ORDER = ["upper", "lower", "foot"] as const;
 
+const SEVERITY_RANK: Record<string, number> = {
+  weak: 0,
+  very_weak: 1,
+  dysfunction: 2,
+};
+
 function regionFor(finding: DiagnosticFinding) {
   return getMuscleByKey(finding.muscle_key)?.region ?? "upper";
+}
+
+function severityRank(finding: DiagnosticFinding) {
+  return SEVERITY_RANK[finding.severity] ?? 0;
 }
 
 export default function DiagnosticsTab({ athlete }: DiagnosticsTabProps) {
@@ -36,7 +46,13 @@ export default function DiagnosticsTab({ athlete }: DiagnosticsTabProps) {
 
   const grouped = REGION_ORDER.map((region) => ({
     region,
-    findings: findings.filter((finding) => regionFor(finding) === region),
+    findings: findings
+      .filter((finding) => regionFor(finding) === region)
+      .sort(
+        (a, b) =>
+          severityRank(b) - severityRank(a) ||
+          (a.observed_at < b.observed_at ? 1 : -1),
+      ),
   })).filter((group) => group.findings.length > 0);
 
   return (

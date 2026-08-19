@@ -11,6 +11,7 @@ const NOT_FOUND_ERROR_CODE = "PGRST116";
 const UNIQUE_VIOLATION_CODE = "23505";
 const ATHLETE_NOT_FOUND_ERROR = "Nie znaleziono zawodnika.";
 const CONFLICT_ERROR = "Znalezisko dla tego mięśnia i strony już istnieje.";
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 function isNotFoundError(error: SupabaseErrorLike): boolean {
   return error?.code === NOT_FOUND_ERROR_CODE;
@@ -99,7 +100,7 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ data: data ?? [] });
+  return NextResponse.json({ data: data ?? [] }, { headers: NO_STORE_HEADERS });
 }
 
 /**
@@ -184,5 +185,5 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ data }, { status: 201 });
+  return NextResponse.json({ data }, { status: 201, headers: NO_STORE_HEADERS });
 }

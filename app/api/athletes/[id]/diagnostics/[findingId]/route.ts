@@ -10,6 +10,7 @@ const NOT_FOUND_ERROR_CODE = "PGRST116";
 const UNIQUE_VIOLATION_CODE = "23505";
 const FINDING_NOT_FOUND_ERROR = "Nie znaleziono znaleziska.";
 const CONFLICT_ERROR = "Znalezisko dla tego mięśnia i strony już istnieje.";
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 function isNotFoundError(error: { code?: string } | null): boolean {
   return error?.code === NOT_FOUND_ERROR_CODE;
@@ -43,6 +44,13 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  if (Object.values(parsed.data).every((value) => value === undefined)) {
+    return NextResponse.json(
+      { error: "Nie podano żadnych pól do aktualizacji." },
       { status: 400 },
     );
   }
@@ -90,7 +98,7 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json({ data });
+  return NextResponse.json({ data }, { headers: NO_STORE_HEADERS });
 }
 
 /**
@@ -137,5 +145,8 @@ export async function DELETE(
     );
   }
 
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, {
+    status: 204,
+    headers: NO_STORE_HEADERS,
+  });
 }

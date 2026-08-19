@@ -246,7 +246,6 @@ export const pl = {
         closeEdit: "Zamknij edycję",
         deleteConfirm: "Czy na pewno chcesz usunąć to znalezisko?",
         errorGeneric: "Nie udało się zapisać znaleziska. Spróbuj ponownie.",
-        errorConflict: "Znalezisko dla tego mięśnia i strony już istnieje.",
         field: {
           muscle: "Mięsień",
           musclePlaceholder: "Szukaj mięśnia (np. \"naramienny\" lub \"deltoid\")...",

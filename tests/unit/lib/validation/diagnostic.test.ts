@@ -60,6 +60,22 @@ describe("createDiagnosticSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects a calendar-impossible date", () => {
+    const result = createDiagnosticSchema.safeParse({
+      ...validInput,
+      observed_at: "2026-02-31",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a leap-day date", () => {
+    const result = createDiagnosticSchema.safeParse({
+      ...validInput,
+      observed_at: "2024-02-29",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects notes longer than 1000 characters", () => {
     const result = createDiagnosticSchema.safeParse({
       ...validInput,
