@@ -64,7 +64,7 @@
 
 | ID | Title | Epic | Priority | Estimate | Status |
 |---|---|---|---|---|---|
-| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Draft |
+| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Draft | story `backlog/stories/US-010-fms-diagnostics.md` + design `docs/design/US-010-fms-diagnostics-design.md` (2026-08-19); Ready po akceptacji designu |
 | ~~US-011~~ | ~~Kontuzje zawodnika~~ | — | — | — | → Sprint 2 |
 | ~~US-012~~ | ~~Testy sprawnościowe~~ | — | — | — | → Sprint 2 |
 | US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Draft |
