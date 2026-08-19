@@ -18,8 +18,9 @@ Codex wrapper rules:
 
 OpenCode configuration (see `opencode.json`):
 - Loads this file and `docs/engineering-policy.md` as instructions.
-- Bash default is `ask`; read-only git/gh commands are allowed; `git push --force`,
-  `git reset --hard`, and `git clean` are denied.
+- Bash default is `ask`; read-only `git` commands are allowed; `gh` commands require
+  approval. `git push --force`, `git reset --hard`, `git clean`, and `git show` of the
+  two PR #69 credential commits are denied.
 - The `tester` subagent may only edit `tests/**` and `qa/**`; everything else is
-  denied for it. Destructive remote operations (push, merge, deploy, secret changes)
-  always require explicit user approval.
+  denied for it (including web access). Destructive remote operations (push, merge,
+  deploy, secret changes) always require explicit user approval.

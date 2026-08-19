@@ -24,7 +24,9 @@
       "git worktree list*": "allow",
       "git push --force*": "deny",
       "git reset --hard*": "deny",
-      "git clean*": "deny"
+      "git clean*": "deny",
+      "git show 1b8658c*": "deny",
+      "git show d4adcb4*": "deny"
     }
   },
   "agent": {
@@ -33,18 +35,20 @@
       "mode": "subagent",
       "permission": {
         "edit": {
+          "*": "deny",
           "tests/**": "allow",
-          "qa/**": "allow",
-          "*": "deny"
+          "qa/**": "allow"
         },
         "bash": {
           "*": "ask",
-          "npx vitest*": "allow",
-          "npx playwright*": "allow",
-          "npm run lint*": "allow",
-          "npm run typecheck*": "allow",
-          "npm run build*": "allow"
-        }
+          "npx vitest run*": "allow",
+          "npx playwright test*": "allow",
+          "npm run lint": "allow",
+          "npm run typecheck": "allow",
+          "npm run build": "allow"
+        },
+        "webfetch": "deny",
+        "websearch": "deny"
       }
     }
   }
