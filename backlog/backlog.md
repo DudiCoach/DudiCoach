@@ -60,6 +60,19 @@
   written (`reviews/US-014-review.md`, `reviews/US-026-review.md`), stories → Done, and
   US-014 RPC gate tests added (`tests/sql/us014-feedback-rpc-gates.sql`, 3 SQL phases ALL PASS).
 
+## Operational Notes (2026-08-19)
+
+- **Security incident (P0)**: PR #69 closed without merge — committed a database credential
+  (Postgres, `peaklab` instance) in `.opencode/skills/supabase-cpet-monitor/SKILL.md`.
+  Full-ref scan: credential present only in the 2 PR #69 commits. Incident record:
+  `docs/security/incident-2026-08-19-pr69-credential-exposure.md`. Rotation of the
+  credential is a pending user action; GitHub sensitive-data removal requested.
+- Repository hygiene: stale branches removed (local + remote); only `main` remains;
+  worktree on `main`; stash dropped (its US-011/US-012 E2E stabilizations were already
+  present on `main` in newer form).
+- OpenCode enablement moved to a minimal replacement PR (config only), separate from
+  skills; no reuse of PR #69 commits.
+
 ## Backlog - v1.1 (post-MVP)
 
 | ID | Title | Epic | Priority | Estimate | Status |
