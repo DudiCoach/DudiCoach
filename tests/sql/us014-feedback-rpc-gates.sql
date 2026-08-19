@@ -164,6 +164,10 @@ begin
   end;
 
   -- G13: cross-athlete access - second athlete with its own active code/plan.
+  -- NOTE: zero-rows expectations here (G13/G14/G16) depend on the RPC
+  -- checking the share-code/plan-owner lookup BEFORE the week/day existence
+  -- check (see 20260527123000_fix_us014_upsert_plan_session_feedback_ambiguity.sql);
+  -- a future RPC reorder silently flips these to a 22023 error.
   insert into public.athletes (id, coach_id, name, share_code, share_active)
   values ('a0000000-0000-0000-0000-000000000002',
           'c0000000-0000-0000-0000-000000000001',
