@@ -3,7 +3,9 @@
 **Status:** remediation in progress (PR closed; rotation pending user action)
 **Severity:** P0 (public repository, committed credential)
 **Owner:** Dawid Malicki
-**Redaction note:** this document intentionally contains NO secret values, usernames, or external URLs.
+**Redaction note:** this document intentionally contains NO secret values, credentials, or
+external URLs. It names the repository owner (already public in `docs/engineering-policy.md`
+and git history).
 
 ## Summary
 
@@ -67,11 +69,14 @@ verification result (no secret values).
 Deleting the branch does NOT remove the credential from the PR commits, which
 remain reachable via the closed PR's refs. File a GitHub Support request
 (sensitive data removal) asking to purge the two commits above from all refs and
-caches. Draft request text:
+caches. GitHub accepts a commit SHA or a file path; provide both. File this
+request ONLY after rotation and verification are complete (steps 1–2 above), so
+that the assertion below is true. Draft request text:
 
 > Requesting removal of sensitive data (a database credential) from two commits
 > in the DudiCoach/DudiCoach repository: 1b8658c9ad5a33c72f8676a3dc1d286aaab35d6e
-> and d4adcb47e808dc570f6624bc7a20f9d6682bfda5 (originally opened in a pull
+> and d4adcb47e808dc570f6624bc7a20f9d6682bfda5, in the file
+> .opencode/skills/supabase-cpet-monitor/SKILL.md (originally opened in a pull
 > request that has been closed and its branch deleted). Please purge these
 > commits from all refs, pull-request refs, and caches. The credential has been
 > rotated.
@@ -90,5 +95,6 @@ caches. Draft request text:
 - [ ] Rotate `postgres` password for `peaklab` instance (user).
 - [ ] Verify old credential rejected (user).
 - [ ] Review instance connection logs since 2026-08-13 (user).
-- [ ] Submit GitHub sensitive-data removal request (user).
+- [ ] Submit GitHub sensitive-data removal request AFTER rotation+verification (user).
+- [ ] Check for repository forks and GitHub secret-scanning alerts (user; dashboard).
 - [ ] Merge this incident record (this PR).
