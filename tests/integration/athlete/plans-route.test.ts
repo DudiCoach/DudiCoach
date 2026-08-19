@@ -141,6 +141,7 @@ describe("GET /api/athlete/[shareCode]/plans (public endpoint)", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(json.data).toBeNull();
     expect(mockRpc).toHaveBeenNthCalledWith(1, "get_athlete_by_share_code", {
       p_code: "ABC234",
@@ -242,6 +243,7 @@ describe("GET /api/athlete/[shareCode]/plans (public endpoint)", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(mockRpc).toHaveBeenNthCalledWith(1, "get_athlete_by_share_code", {
       p_code: "ABC234",
     });
