@@ -12,6 +12,10 @@ const FINDING_NOT_FOUND_ERROR = "Nie znaleziono znaleziska.";
 const CONFLICT_ERROR = "Znalezisko dla tego mięśnia i strony już istnieje.";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
+function jsonError(body: object, status: number) {
+  return NextResponse.json(body, { status, headers: NO_STORE_HEADERS });
+}
+
 function isNotFoundError(error: { code?: string } | null): boolean {
   return error?.code === NOT_FOUND_ERROR_CODE;
 }
@@ -37,22 +41,16 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonError({ error: "Invalid JSON body" }, 400);
   }
 
   const parsed = updateDiagnosticSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", issues: parsed.error.issues },
-      { status: 400 },
-    );
+    return jsonError({ error: "Validation failed", issues: parsed.error.issues }, 400);
   }
 
   if (Object.values(parsed.data).every((value) => value === undefined)) {
-    return NextResponse.json(
-      { error: "Nie podano żadnych pól do aktualizacji." },
-      { status: 400 },
-    );
+    return jsonError({ error: "Nie podano żadnych pól do aktualizacji." }, 400);
   }
 
   const { data, error } = await supabase
@@ -65,17 +63,11 @@ export async function PATCH(
 
   if (error) {
     if (isNotFoundError(error)) {
-      return NextResponse.json(
-        { error: FINDING_NOT_FOUND_ERROR },
-        { status: 404 },
-      );
+      return jsonError({ error: FINDING_NOT_FOUND_ERROR }, 404);
     }
 
     if (error.code === UNIQUE_VIOLATION_CODE) {
-      return NextResponse.json(
-        { error: CONFLICT_ERROR },
-        { status: 409 },
-      );
+      return jsonError({ error: CONFLICT_ERROR }, 409);
     }
 
     console.error(
@@ -85,17 +77,11 @@ export async function PATCH(
         message: error.message,
       },
     );
-    return NextResponse.json(
-      { error: "Nie udało się zaktualizować znaleziska." },
-      { status: 500 },
-    );
+    return jsonError({ error: "Nie udało się zaktualizować znaleziska." }, 500);
   }
 
   if (!data) {
-    return NextResponse.json(
-      { error: FINDING_NOT_FOUND_ERROR },
-      { status: 404 },
-    );
+    return jsonError({ error: FINDING_NOT_FOUND_ERROR }, 404);
   }
 
   return NextResponse.json({ data }, { headers: NO_STORE_HEADERS });
@@ -132,17 +118,11 @@ export async function DELETE(
         message: error.message,
       },
     );
-    return NextResponse.json(
-      { error: "Nie udało się usunąć znaleziska." },
-      { status: 500 },
-    );
+    return jsonError({ error: "Nie udało się usunąć znaleziska." }, 500);
   }
 
   if (count === 0) {
-    return NextResponse.json(
-      { error: FINDING_NOT_FOUND_ERROR },
-      { status: 404 },
-    );
+    return jsonError({ error: FINDING_NOT_FOUND_ERROR }, 404);
   }
 
   return new NextResponse(null, {

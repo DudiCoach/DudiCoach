@@ -206,7 +206,8 @@ PATCH partial, 404 unknown finding, DELETE 204/404, ordering.
 ### Unit
 
 - `tests/unit/lib/constants/muscles.test.ts` — 68 entries, unique keys,
-  region counts (30/24/14), no key collisions with latin/pl names.
+  region counts (30/24/14), search behavior (empty/Polish/Latin,
+  diacritic-insensitive).
 - `tests/unit/lib/validation/diagnostic.test.ts` — zod cases (incl.
   calendar-impossible date rejection).
 - `tests/unit/components/coach/MuscleCombobox.test.tsx` — search filter

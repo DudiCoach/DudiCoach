@@ -42,14 +42,18 @@ export default function DiagnosticCreateForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!muscleKey || !canSubmit) return;
-    await mutation.mutateAsync({
-      muscle_key: muscleKey,
-      side,
-      severity,
-      observed_at: observedAt,
-      notes: notes === "" ? undefined : notes,
-    });
-    onClose();
+    try {
+      await mutation.mutateAsync({
+        muscle_key: muscleKey,
+        side,
+        severity,
+        observed_at: observedAt,
+        notes: notes === "" ? undefined : notes,
+      });
+      onClose();
+    } catch {
+      // mutation.error is rendered below; keep the form open for a retry.
+    }
   }
 
   const mutationError = mutation.error?.message

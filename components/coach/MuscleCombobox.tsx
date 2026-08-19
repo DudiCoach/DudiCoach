@@ -94,7 +94,7 @@ export default function MuscleCombobox({
       setActiveIndex(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      setActiveIndex(results.length - 1);
+      setActiveIndex(Math.max(results.length - 1, 0));
     } else if (event.key === "Enter") {
       event.preventDefault();
       const muscle = results[activeIndex];

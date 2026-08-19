@@ -94,15 +94,25 @@ describe("DiagnosticCard", () => {
     expect(screen.getByText("Błąd zapisu")).toBeInTheDocument();
   });
 
-  it("does not re-PATCH notes on blur when nothing changed", () => {
+  it("does not re-PATCH notes on blur after a successful save", () => {
     const { updateMutate } = setupMutations();
     render(<DiagnosticCard athleteId="a1" finding={makeFinding()} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Naramienny przedni/i }));
     const textarea = screen.getByLabelText(/Notatki/i);
-    fireEvent.blur(textarea);
 
-    expect(updateMutate).not.toHaveBeenCalled();
+    fireEvent.change(textarea, { target: { value: "nowa notatka" } });
+    fireEvent.blur(textarea);
+    expect(updateMutate).toHaveBeenCalledTimes(1);
+    expect(updateMutate).toHaveBeenCalledWith(
+      { findingId: "finding-uuid-001", input: { notes: "nowa notatka" } },
+      expect.any(Object),
+    );
+
+    const onSuccess = updateMutate.mock.calls[0][1].onSuccess as () => void;
+    act(() => onSuccess());
+    fireEvent.blur(textarea);
+    expect(updateMutate).toHaveBeenCalledTimes(1);
   });
 
   it("deletes only after a confirmed dialog", () => {

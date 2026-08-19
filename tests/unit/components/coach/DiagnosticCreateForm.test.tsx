@@ -17,7 +17,7 @@ function setupMutation(overrides: Record<string, unknown> = {}) {
   const mutateAsync = vi.fn();
   const mutation = {
     isPending: false,
-    error: null,
+    error: null as Error | null,
     mutateAsync,
     ...overrides,
   };
@@ -87,20 +87,24 @@ describe("DiagnosticCreateForm", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("surfaces the server error message (e.g. 409 conflict)", async () => {
-    setupMutation({
-      error: new Error("Znalezisko dla tego mięśnia i strony już istnieje."),
+  it("surfaces the server error message (e.g. 409 conflict) and stays open", async () => {
+    const mutation = setupMutation();
+    const onClose = vi.fn();
+    const conflictMessage = "Znalezisko dla tego mięśnia i strony już istnieje.";
+    mutation.mutateAsync.mockImplementation(async () => {
+      mutation.error = new Error(conflictMessage);
+      throw mutation.error;
     });
-    render(
-      <DiagnosticCreateForm athleteId="a1" onClose={() => {}} />,
-    );
+    const { rerender } = render(<DiagnosticCreateForm athleteId="a1" onClose={onClose} />);
 
     selectMuscle("Naramienny przedni");
-    submitForm();
+    await act(async () => {
+      submitForm();
+    });
+    rerender(<DiagnosticCreateForm athleteId="a1" onClose={onClose} />);
 
-    expect(
-      screen.getByRole("alert").textContent,
-    ).toContain("Znalezisko dla tego mięśnia i strony już istnieje.");
+    expect(screen.getByRole("alert").textContent).toContain(conflictMessage);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("disables all fields while submitting", () => {

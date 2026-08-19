@@ -13,6 +13,10 @@ const ATHLETE_NOT_FOUND_ERROR = "Nie znaleziono zawodnika.";
 const CONFLICT_ERROR = "Znalezisko dla tego mięśnia i strony już istnieje.";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
+function jsonError(body: object, status: number) {
+  return NextResponse.json(body, { status, headers: NO_STORE_HEADERS });
+}
+
 function isNotFoundError(error: SupabaseErrorLike): boolean {
   return error?.code === NOT_FOUND_ERROR_CODE;
 }
@@ -31,27 +35,18 @@ async function ensureAthleteExists(
 
   if (error) {
     if (isNotFoundError(error)) {
-      return NextResponse.json(
-        { error: ATHLETE_NOT_FOUND_ERROR },
-        { status: 404 },
-      );
+      return jsonError({ error: ATHLETE_NOT_FOUND_ERROR }, 404);
     }
 
     console.error(`[${routeLabel}] failed to verify athlete`, {
       code: error.code,
       message: error.message,
     });
-    return NextResponse.json(
-      { error: internalErrorMessage },
-      { status: 500 },
-    );
+    return jsonError({ error: internalErrorMessage }, 500);
   }
 
   if (!athlete) {
-    return NextResponse.json(
-      { error: ATHLETE_NOT_FOUND_ERROR },
-      { status: 404 },
-    );
+    return jsonError({ error: ATHLETE_NOT_FOUND_ERROR }, 404);
   }
 
   return null;
@@ -94,10 +89,7 @@ export async function GET(
       code: error.code,
       message: error.message,
     });
-    return NextResponse.json(
-      { error: "Nie udało się pobrać znalezisk." },
-      { status: 500 },
-    );
+    return jsonError({ error: "Nie udało się pobrać znalezisk." }, 500);
   }
 
   return NextResponse.json({ data: data ?? [] }, { headers: NO_STORE_HEADERS });
@@ -125,15 +117,12 @@ export async function POST(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonError({ error: "Invalid JSON body" }, 400);
   }
 
   const parsed = createDiagnosticSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", issues: parsed.error.issues },
-      { status: 400 },
-    );
+    return jsonError({ error: "Validation failed", issues: parsed.error.issues }, 400);
   }
 
   const athleteCheck = await ensureAthleteExists(
@@ -155,34 +144,22 @@ export async function POST(
 
   if (error) {
     if (error.code === "23503") {
-      return NextResponse.json(
-        { error: ATHLETE_NOT_FOUND_ERROR },
-        { status: 404 },
-      );
+      return jsonError({ error: ATHLETE_NOT_FOUND_ERROR }, 404);
     }
 
     if (error.code === UNIQUE_VIOLATION_CODE) {
-      return NextResponse.json(
-        { error: CONFLICT_ERROR },
-        { status: 409 },
-      );
+      return jsonError({ error: CONFLICT_ERROR }, 409);
     }
 
     console.error("[POST /api/athletes/[id]/diagnostics] Supabase error", {
       code: error.code,
       message: error.message,
     });
-    return NextResponse.json(
-      { error: "Nie udało się dodać znaleziska." },
-      { status: 500 },
-    );
+    return jsonError({ error: "Nie udało się dodać znaleziska." }, 500);
   }
 
   if (!data) {
-    return NextResponse.json(
-      { error: ATHLETE_NOT_FOUND_ERROR },
-      { status: 404 },
-    );
+    return jsonError({ error: ATHLETE_NOT_FOUND_ERROR }, 404);
   }
 
   return NextResponse.json({ data }, { status: 201, headers: NO_STORE_HEADERS });

@@ -51,7 +51,7 @@ export default function DiagnosticsTab({ athlete }: DiagnosticsTabProps) {
       .sort(
         (a, b) =>
           severityRank(b) - severityRank(a) ||
-          (a.observed_at < b.observed_at ? 1 : -1),
+          (a.observed_at < b.observed_at ? 1 : a.observed_at > b.observed_at ? -1 : 0),
       ),
   })).filter((group) => group.findings.length > 0);
 

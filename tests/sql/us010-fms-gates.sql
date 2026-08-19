@@ -176,7 +176,9 @@ begin
 end;
 $$;
 
--- G11: owner (coach A) full CRUD via RLS.
+-- G11: owner (coach A) full CRUD via RLS. The first row is KEPT (owned by
+-- coach A) so G12 has something to try to read/mutate; the owner-delete
+-- proof runs on a second row.
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000001', false);
 do $$
@@ -210,8 +212,11 @@ begin
     insert into us010_result values ('g11_owner_update', 'rows=' || v_n);
   end if;
 
-  delete from public.diagnostic_findings where id = v_id;
-  select count(*) into v_n from public.diagnostic_findings where id = v_id;
+  insert into public.diagnostic_findings (athlete_id, muscle_key, side, severity)
+  values (v_athlete_a, 'lateral_deltoid', 'right', 'very_weak');
+
+  delete from public.diagnostic_findings where muscle_key = 'lateral_deltoid';
+  select count(*) into v_n from public.diagnostic_findings where muscle_key = 'lateral_deltoid';
   if v_n = 0 then
     insert into us010_result values ('g11_owner_delete', 'pass');
   else
@@ -222,6 +227,9 @@ $$;
 reset role;
 
 -- G12: cross-coach deny - coach B sees zero rows of coach A and cannot write.
+-- Coach A owns one row at this point (G11 kept it), so every deny gate here
+-- discriminates a real row: read must see 0, mutations must touch 0 rows,
+-- and the row must survive both attempts (verified as postgres below).
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000003', false);
 do $$
@@ -265,7 +273,25 @@ end;
 $$;
 reset role;
 
--- G13: anon has grants but no policies -> SELECT returns zero rows, writes fail.
+-- G12b: the coach-A row survived coach B's update/delete attempts (postgres view).
+do $$
+declare
+  v_athlete_a uuid := 'a0000000-0000-0000-0000-000000000001';
+  v_n integer;
+begin
+  select count(*) into v_n
+  from public.diagnostic_findings
+  where athlete_id = v_athlete_a and muscle_key = 'supraspinatus' and severity = 'weak';
+  if v_n = 1 then
+    insert into us010_result values ('g12b_row_intact', 'pass');
+  else
+    insert into us010_result values ('g12b_row_intact', 'rows=' || v_n);
+  end if;
+end;
+$$;
+
+-- G13: anon has a SELECT grant only; reads are blocked by RLS (zero rows),
+-- writes are blocked at grant level. Both raise insufficient_privilege.
 set role anon;
 do $$
 declare
@@ -342,6 +368,14 @@ begin
        where c.table_schema = 'public' and c.table_name = 'diagnostic_findings' and c.column_name = 'notes'),
       'none'));
   end if;
+
+  begin
+    insert into public.diagnostic_findings (athlete_id, muscle_key, side, severity, notes)
+    values ('a0000000-0000-0000-0000-000000000001', 'soleus', 'left', 'weak', repeat('x', 1001));
+    insert into us010_result values ('g15b_notes_too_long_rejected', 'insert accepted');
+  exception when sqlstate '22001' then
+    insert into us010_result values ('g15b_notes_too_long_rejected', 'pass');
+  end;
 end;
 $$;
 
