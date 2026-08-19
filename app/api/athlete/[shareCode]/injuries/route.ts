@@ -39,5 +39,9 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ data: data ?? [] });
+  // Personalized data gated by share code: never cache.
+  return NextResponse.json(
+    { data: data ?? [] },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
