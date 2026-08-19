@@ -51,6 +51,8 @@ run_sql tests/sql/fixtures/session-outcome-seed-legacy-valid.sql
 run_sql tests/sql/outcome-schema-security.sql
 run_sql tests/sql/outcome-schema-behavior.sql
 run_sql tests/sql/us014-feedback-rpc-gates.sql
+run_sql tests/sql/fixtures/us010-diagnostics-seed.sql
+run_sql tests/sql/us010-fms-gates.sql
 echo "   clean replay: PASS"
 
 echo "== Phase 2a: upgrade pre-check rejects invalid legacy rows =="
@@ -83,6 +85,8 @@ run_sql tests/sql/outcome-schema-security.sql
 run_sql tests/sql/outcome-schema-behavior.sql
 run_sql tests/sql/outcome-upgrade-replay.sql
 run_sql tests/sql/us014-feedback-rpc-gates.sql
+run_sql tests/sql/fixtures/us010-diagnostics-seed.sql
+run_sql tests/sql/us010-fms-gates.sql
 mv "${TMP}/outcome_a.sql" "${OUTCOME_A}"
 mv "${TMP}/outcome_b.sql" "${OUTCOME_B}"
 echo "   upgrade replay: PASS"

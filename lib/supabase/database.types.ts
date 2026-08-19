@@ -77,6 +77,50 @@ export type Database = {
         }
         Relationships: []
       }
+      diagnostic_findings: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          id: string
+          muscle_key: string
+          notes: string | null
+          observed_at: string
+          severity: string
+          side: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          id?: string
+          muscle_key: string
+          notes?: string | null
+          observed_at?: string
+          severity: string
+          side: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          id?: string
+          muscle_key?: string
+          notes?: string | null
+          observed_at?: string
+          severity?: string
+          side?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_findings_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       injuries: {
         Row: {
           athlete_id: string

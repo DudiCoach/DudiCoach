@@ -11,6 +11,7 @@ import OnlineTab from "./OnlineTab";
 import PlanTabContent from "./PlanTabContent";
 import InjuriesTab from "./InjuriesTab";
 import TestsTab from "./TestsTab";
+import DiagnosticsTab from "./DiagnosticsTab";
 
 interface AthleteEditorShellProps {
   athlete: Athlete;
@@ -20,7 +21,7 @@ const TABS: Tab[] = [
   { key: "profile", label: pl.coach.athlete.tabs.profile, disabled: false },
   { key: "tests", label: pl.coach.athlete.tabs.tests, disabled: false },
   { key: "injuries", label: pl.coach.athlete.tabs.injuries, disabled: false },
-  { key: "diagnostics", label: pl.coach.athlete.tabs.diagnostics, disabled: true },
+  { key: "diagnostics", label: pl.coach.athlete.tabs.diagnostics, disabled: false },
   { key: "progressions", label: pl.coach.athlete.tabs.progressions, disabled: true },
   { key: "plans", label: pl.coach.athlete.tabs.plans, disabled: false },
   { key: "online", label: pl.coach.athlete.tabs.online, disabled: false },
@@ -29,7 +30,8 @@ const TABS: Tab[] = [
 /**
  * Editor wrapper for the athlete page.
  * Contains back button, tab navigation, and the active tab's content.
- * Only the "Profil" tab is active in US-003; others are visible but disabled.
+ * Profil/Testy/Kontuzje/Diagnostyka FMS/Plany/Online are active; Progresje
+ * and future tabs are visible but disabled.
  */
 export default function AthleteEditorShell({ athlete }: AthleteEditorShellProps) {
   const [activeTab, setActiveTab] = useState<string>("profile");
@@ -57,6 +59,7 @@ export default function AthleteEditorShell({ athlete }: AthleteEditorShellProps)
       {activeTab === "profile" && <AthleteProfileForm athlete={athlete} />}
       {activeTab === "tests" && <TestsTab athlete={athlete} />}
       {activeTab === "injuries" && <InjuriesTab athlete={athlete} />}
+      {activeTab === "diagnostics" && <DiagnosticsTab athlete={athlete} />}
       {activeTab === "plans" && <PlanTabContent athlete={athlete} />}
       {activeTab === "online" && <OnlineTab athlete={athlete} />}
     </div>
