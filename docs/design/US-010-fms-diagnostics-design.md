@@ -69,12 +69,23 @@ comment on table public.diagnostic_findings is
   conflicts surface as 409 in the API (never silent overwrite).
 - Date stored as `date` (calendar day of examination), default today.
 
+### Deviation from spec
+
+The spec's `DiagnosticFinding.region` is NOT stored in the table: region
+(Góra/Dół/Stopa) is derived from the catalog via `muscle_key`. Rationale:
+region is immutable catalog metadata, not examination data; storing it would
+allow inconsistency with the catalog. UI grouping reads it from
+`MUSCLES` lookup.
+
 ### Rollback
 
 - Forward: new table only; no changes to existing tables.
 - Backward: table stays harmless; disabling the tab removes UI access.
 - Destructive rollback (drop table) is NOT safe once data exists (US-015
   will need the rows for snapshots) — documented residual.
+- Production-deployment risk: new table + RLS with no existing-data migration
+  and no behavior change to existing endpoints — low risk; if a problem is
+  found post-release, disable the tab (config-level revert, no data loss).
 
 ## 3. RLS and security
 
@@ -111,9 +122,10 @@ export const MUSCLE_KEYS = MUSCLES.map((m) => m.key) as [string, ...string[]];
 
 ## 5. API
 
-Route pattern mirrors `app/api/athletes/[id]/injuries*` (requireAuth,
-ensureAthleteExists with PGRST116→404, zod validation, `23503`→404,
-`23505`→409).
+Route pattern builds on `app/api/athletes/[id]/injuries*` (requireAuth,
+ensureAthleteExists with PGRST116→404, zod validation, `23503`→404) and
+EXTENDS it: the injuries routes do not map unique conflicts, so diagnostics
+adds explicit `23505`→409 handling.
 
 - `GET /api/athletes/[id]/diagnostics` → `{ data: DiagnosticFinding[] }`
   ordered by `observed_at desc, created_at desc`.

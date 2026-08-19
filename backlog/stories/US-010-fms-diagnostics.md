@@ -24,7 +24,7 @@ sprint: Sprint 3 (Athlete Health Data)
 ## Scope
 
 - Aktywacja zakładki "Diagnostyka FMS" w edytorze zawodnika (`/athletes/<id>`).
-- CRUD bieżących znalezisk: `athlete + muscle + side` = jeden bieżący rekord (upsert semantics, unikalność wymuszona w bazie).
+- CRUD bieżących znalezisk: `athlete + muscle + side` = jeden bieżący rekord (unikalność wymuszona w bazie; konflikt → 409, aktualizacja tylko przez PATCH).
 - Wersjonowany katalog 68 mięśni (Polska + Latin, region Góra/Dół/Stopa) jako stała TypeScript.
 - Searchable dropdown mięśni (klawiatura), grupowanie znalezisk wg regionów, badge strony i stopnia, edycja inline z auto-save, usuwanie z potwierdzeniem.
 
