@@ -9,11 +9,13 @@ import {
   DuplicateActiveJobError,
   fetchPlanGenerationJobStatus,
   fetchPlans,
+  generatePlan,
   IncompleteDataError,
   planJobKeys,
   planKeys,
   RateLimitError,
   startPlanGenerationJob,
+  TimeoutError,
   type PlanGenerationJob,
   type PlanJobStatus,
   type TrainingPlan,
@@ -50,6 +52,7 @@ const POLL_SLOW_MS = 5_000;
  */
 export default function PlanTabContent({ athlete }: PlanTabContentProps) {
   const queryClient = useQueryClient();
+  const isSyncMode = process.env.NEXT_PUBLIC_PLAN_GENERATION_MODE === "sync";
 
   const plansQuery = useQuery<TrainingPlan[]>({
     queryKey: planKeys.byAthlete(athlete.id),
@@ -84,6 +87,16 @@ export default function PlanTabContent({ athlete }: PlanTabContentProps) {
     },
   });
 
+  const syncGenerateMutation = useMutation({
+    mutationFn: () => generatePlan(athlete.id),
+    onSuccess: (plan) => {
+      void queryClient.invalidateQueries({
+        queryKey: planKeys.byAthlete(athlete.id),
+      });
+      setUserSelectedId(plan.id);
+    },
+  });
+
   const jobStatusQuery = useQuery<PlanGenerationJob>({
     queryKey: activeJobId
       ? planJobKeys.detail(activeJobId)
@@ -100,7 +113,7 @@ export default function PlanTabContent({ athlete }: PlanTabContentProps) {
 
       const startedAt = activeJobStartedAtMs ?? Date.now();
       const elapsed = Date.now() - startedAt;
-      if (elapsed >= POLL_TIMEOUT_MS) return POLL_SLOW_MS;
+      if (elapsed >= POLL_TIMEOUT_MS) return false;
       if (elapsed >= 90_000) return POLL_SLOW_MS;
       if (elapsed >= 30_000) return POLL_MEDIUM_MS;
       return POLL_FAST_MS;
@@ -167,15 +180,21 @@ export default function PlanTabContent({ athlete }: PlanTabContentProps) {
   const selectedPlan =
     plans.find((p) => p.id === userSelectedId) ?? plans[0] ?? null;
   const selectedId = selectedPlan?.id ?? null;
-  const generateState = startJobMutation.isPending
-    ? "posting"
-    : activeJobId
-      ? activeJobStatus === "processing"
-        ? "processing"
-        : "queued"
-      : "idle";
+  const generateState = isSyncMode
+    ? syncGenerateMutation.isPending
+      ? "posting"
+      : "idle"
+    : startJobMutation.isPending
+      ? "posting"
+      : activeJobId
+        ? activeJobStatus === "processing"
+          ? "processing"
+          : "queued"
+        : "idle";
   const isDuplicateConflict = startJobMutation.error instanceof DuplicateActiveJobError;
-  const startErrorMessage = mapJobStartErrorToMessage(startJobMutation.error);
+  const startErrorMessage = isSyncMode
+    ? mapSyncGenerateErrorToMessage(syncGenerateMutation.error)
+    : mapJobStartErrorToMessage(startJobMutation.error);
   const pollingErrorMessage = mapPollingErrorToMessage(jobStatusQuery.error);
   const failedMessage = mapTerminalFailureMessage(terminalStatus, terminalErrorCode);
 
@@ -190,6 +209,14 @@ export default function PlanTabContent({ athlete }: PlanTabContentProps) {
           : null;
 
   const handleStartGeneration = () => {
+    if (isSyncMode) {
+      syncGenerateMutation.reset();
+      setTerminalStatus(null);
+      setTerminalErrorCode(null);
+      setIsPollTimedOut(false);
+      syncGenerateMutation.mutate();
+      return;
+    }
     startJobMutation.reset();
     setTerminalStatus(null);
     setTerminalErrorCode(null);
@@ -324,6 +351,17 @@ function mapJobStartErrorToMessage(error: unknown): string | null {
     return pl.coach.athlete.plans.errorIncompleteData;
   if (error instanceof RateLimitError)
     return pl.coach.athlete.plans.errorRateLimit;
+  return pl.coach.athlete.plans.errorGeneric;
+}
+
+function mapSyncGenerateErrorToMessage(error: unknown): string | null {
+  if (!error) return null;
+  if (error instanceof IncompleteDataError)
+    return pl.coach.athlete.plans.errorIncompleteData;
+  if (error instanceof RateLimitError)
+    return pl.coach.athlete.plans.errorRateLimit;
+  if (error instanceof TimeoutError)
+    return pl.coach.athlete.plans.errorTimeout;
   return pl.coach.athlete.plans.errorGeneric;
 }
 

@@ -4,7 +4,7 @@ title: Async AI plan generation via job table & polling
 role: trener
 priority: P0
 estimate: L
-status: Ready
+status: Done
 lane: C
 dependencies: [US-005]
 epic: EPIC-B
@@ -13,8 +13,16 @@ design_doc: docs/design/US-026-async-plan-generation-design.md
 adr_refs:
   - docs/adr/0007-async-plan-generation-via-job-table.md
 created: 2026-04-28
-updated: 2026-04-28
+updated: 2026-08-18
 sprint: Sprint 3
+prs: [39, 40, 41, 42, 43, 44, 45, 46, 47, 48]
+done_evidence: |
+  Delivered via PRs #39-#48; final verification + fixes in
+  chore/us-014-us-026-reconcile (2026-08-18): rate limit on job creation,
+  NEXT_PUBLIC_PLAN_GENERATION_MODE feature flag, APIConnectionTimeoutError
+  retryable, empty-body 401 on worker, stale-claim TTL 180 s, polling stop
+  at 180 s. Reviews: reviews/US-026-review.md. Gates G6/G7/G8 approved;
+  CI lint/typecheck/vitest (451)/build green; SQL suite 3 phases ALL PASS.
 ---
 
 # US-026 — Async AI Plan Generation via Job Table & Polling
@@ -77,7 +85,7 @@ Wtedy job ma status "succeeded" i niepuste plan_id
 I odpowiedź GET /api/coach/plans/jobs/{jobId} zawiera planId
 I lista planów (planKeys.byAthlete) jest unieważniona
 I nowy plan widoczny jest na karcie "Plany"
-I tabela training_plans zawiera nowy wiersz (4 tygodnie x N dni x 5-7 ćwiczeń)
+I tabela training_plans zawiera nowy wiersz (4 tygodnie x N dni)
 I wiersz spełnia trainingPlanJsonSchema
 ```
 
@@ -252,6 +260,23 @@ I rollback do trybu sync wymaga jedynie zmiany env i redeploya (bez migracji DB)
 - [ ] Vercel tier potwierdzony (musi obsługiwać `maxDuration: 60` minimum; rekomendowane 300 — Pro)
 - [ ] Rollback path zweryfikowany w preview (flip env do `sync`, ponowny deploy)
 - [ ] Logs zweryfikowane: brak `prompt_inputs`, brak `share_code`, brak raw Claude responses w logach
+
+## Recorded deviations (final review, 2026-08-18)
+
+1. **AC-1**: response is `201` `{ data: { id, status: "queued" } }` — not
+   `202` `{ jobId, status: "pending" }`. Client reads `.id`
+   (`lib/api/plans.ts`); semantically equivalent, kept as-is.
+2. **AC-5**: single `error_code = "plan_parse_or_validation_failed"` instead
+   of separate `parse_error` / `validation_error`. Intentional: one code,
+   sanitized message.
+3. **`max_attempts` = 3** (column default and worker insert) vs design's 2;
+   RPC `p_max_attempts` param respected.
+4. **DoD**: `lib/ai/error-classification.ts` not extracted — classification
+   lives in the worker route; refactor follow-up.
+5. **E2E `tests/e2e/US-026*.spec.ts` deferred** — integration coverage
+   thorough; Playwright E2E with real AI calls requires opt-in env (G9).
+6. **Feature flag is frontend-gated** — sync route stays callable; rollback
+   = `NEXT_PUBLIC_PLAN_GENERATION_MODE=sync` + redeploy, no DB migration.
 
 ## Implementation Notes
 

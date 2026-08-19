@@ -4,12 +4,12 @@ title: Backend CRUD zawodnika
 role: trener
 priority: P0
 estimate: M
-status: InE2E
+status: Done
 dependencies: [US-001]
 epic: EPIC-A
 design_required: true
 created: 2026-04-08
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # US-002 — Backend CRUD zawodnika

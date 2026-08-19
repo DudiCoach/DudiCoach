@@ -4,12 +4,12 @@ title: Logowanie trenera do panelu
 role: trener
 priority: P0
 estimate: S
-status: InE2E
+status: Done
 dependencies: []
 epic: EPIC-A
 design_required: true
 created: 2026-04-08
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # US-001 — Logowanie trenera do panelu

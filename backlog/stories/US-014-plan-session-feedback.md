@@ -4,15 +4,22 @@ title: Athlete text feedback per plan session/day
 role: zawodnik
 priority: P1
 estimate: M
-status: Ready
+status: Done
 lane: C
 dependencies: [US-004, US-005, US-025, US-026]
 epic: EPIC-C
 design_required: true
 design_doc: docs/design/US-014-plan-session-feedback-design.md
 created: 2026-05-21
-updated: 2026-05-21
+updated: 2026-08-18
 sprint: Backlog-v1.1
+prs: [58, 60, 61, 62]
+done_evidence: |
+  Delivered via PRs #58/#60/#61/#62; final verification +
+  reviews/US-014-review.md in chore/us-014-us-026-reconcile (2026-08-18).
+  RPC gate tests added: tests/sql/us014-feedback-rpc-gates.sql wired into
+  scripts/verify-migrations.sh (3 phases ALL PASS). Gates G6/G7/G8 approved;
+  CI lint/typecheck/vitest/build green.
 ---
 
 # US-014 - Athlete text feedback per plan session/day
@@ -34,7 +41,9 @@ aby szybciej korygowac kolejne decyzje treningowe.
 3. Trener widzi feedback dla tego dnia w istniejacym widoku tygodniowym.
 4. Feedback dla nieistniejacego dnia (week/day spoza planu) jest odrzucany.
 5. Walidacja dlugosci dziala w obu warstwach:
-   - DB check: `length(feedback_text) between 1 and 2000`
+   - DB check: `plan_session_feedback_feedback_text_valid` (NULL lub
+     trimmed `length(feedback_text) between 1 and 2000`; nazwa zaktualizowana
+     po PR #68 — wcześniej: `length(feedback_text) between 1 and 2000`)
    - zod validation: min 1, max 2000
 6. Sanitisation serwerowa:
    - trim

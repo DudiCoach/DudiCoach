@@ -4,10 +4,11 @@ import { beforeEach, vi } from "vitest";
 
 import { PLAN_JOB_STATUS_SELECT } from "@/lib/api/plan-jobs";
 
-const { mockGetUser, mockFrom } = vi.hoisted(() => {
+const { mockGetUser, mockFrom, mockCheckRateLimit } = vi.hoisted(() => {
   const mockGetUser = vi.fn();
   const mockFrom = vi.fn();
-  return { mockGetUser, mockFrom };
+  const mockCheckRateLimit = vi.fn();
+  return { mockGetUser, mockFrom, mockCheckRateLimit };
 });
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -17,6 +18,10 @@ vi.mock("@/lib/supabase/server", () => ({
     },
     from: mockFrom,
   })),
+}));
+
+vi.mock("@/lib/ai/rate-limiter", () => ({
+  checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
 }));
 
 import { POST } from "@/app/api/coach/plans/jobs/route";
@@ -145,6 +150,7 @@ function routeContext(jobId: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetUser.mockResolvedValue({ data: { user: COACH_USER }, error: null });
+  mockCheckRateLimit.mockReturnValue({ allowed: true });
 });
 
 describe("POST /api/coach/plans/jobs", () => {
@@ -266,6 +272,21 @@ describe("POST /api/coach/plans/jobs", () => {
     expect(insertedPayload.coach_id).toBe(COACH_USER.id);
     expect(insertedPayload.prompt_inputs.systemPrompt.length).toBeGreaterThan(0);
     expect(insertedPayload.prompt_inputs.userPrompt).toContain("Naderwanie dwugłowego");
+  });
+
+  it("returns 429 with Retry-After when rate limit is exceeded", async () => {
+    mockCheckRateLimit.mockReturnValue({ allowed: false, retryAfterMs: 42_000 });
+
+    const response = await POST(
+      makePostRequest({ athleteId: ATHLETE_ID }) as Parameters<typeof POST>[0],
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(json.error).toBe("Zbyt wiele prób. Poczekaj chwilę.");
+    expect(response.headers.get("Retry-After")).toBe("42");
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(COACH_USER.id);
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 });
 

@@ -1,7 +1,7 @@
 # Training Planner AI - Backlog
 
 **Owner**: backlog-manager agent
-**Last updated**: 2026-04-24
+**Last updated**: 2026-08-18
 **Sprint**: Sprint 2 (Hardening + Athlete Data)
 
 ## Status Legend
@@ -55,9 +55,10 @@
 - US-025 closed: production E2E smoke passed (16 passed / 0 failed, desktop + mobile,
   `main@b7e9355`) — evidence `qa/e2e/US-025-report.md`; story status → Done.
 - US-014 (session feedback) and US-026 (async plan generation) are implemented and merged
-  (US-014: PRs #59-#62; US-026: PRs #40-#45), but their story files still say `Ready` and
-  no `reviews/US-014-review.md` / `reviews/US-026-review.md` exists. Formal review + status
-  reconciliation is an open follow-up — do not mark them Done until review artifacts exist.
+  (US-014: PRs #58/#60/#61/#62; US-026: PRs #39-#48). **Closed 2026-08-18**: independent
+  verification performed, fixes shipped in `chore/us-014-us-026-reconcile`, review artifacts
+  written (`reviews/US-014-review.md`, `reviews/US-026-review.md`), stories → Done, and
+  US-014 RPC gate tests added (`tests/sql/us014-feedback-rpc-gates.sql`, 3 SQL phases ALL PASS).
 
 ## Backlog - v1.1 (post-MVP)
 
@@ -67,7 +68,8 @@
 | ~~US-011~~ | ~~Kontuzje zawodnika~~ | — | — | — | → Sprint 2 |
 | ~~US-012~~ | ~~Testy sprawnościowe~~ | — | — | — | → Sprint 2 |
 | US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Draft |
-| US-014 | Checkbox done + notatki zawodnika per cwiczenie | EPIC-C | P1 | M | Draft |
+| US-014 | Checkbox done + notatki zawodnika per cwiczenie | EPIC-C | P1 | M | Done | PRs #58/#60/#61/#62; reviews/US-014-review.md; RPC gate SQL tests wired (2026-08-18) |
+| US-026 | Async AI plan generation via job table & polling | EPIC-B | P0 | L | Done | PRs #39-#48; reviews/US-026-review.md; fixes in chore/us-014-us-026-reconcile (2026-08-18) |
 | US-015 | Historia snapshotow diagnostyki FMS | EPIC-A | P1 | M | Draft |
 | US-016 | Export planu do PDF | EPIC-B | P1 | S | Draft |
 | US-017 | Wiele planow per zawodnik z historia | EPIC-B | P1 | M | Draft |

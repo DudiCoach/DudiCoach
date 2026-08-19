@@ -14,6 +14,7 @@ import {
   computeTrainingMonths,
   type AthleteWithContext,
 } from "@/lib/ai/prompts/plan-generation";
+import { checkRateLimit } from "@/lib/ai/rate-limiter";
 import { requireAuth } from "@/lib/api/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,6 +43,22 @@ export async function POST(request: NextRequest) {
     "POST /api/coach/plans/jobs",
   );
   if (response) return response;
+
+  // --- Rate limit check (3 generations per minute per coach) ---
+  const rl = checkRateLimit(user.id);
+  if (!rl.allowed) {
+    const retryAfterSec = Math.max(
+      1,
+      Math.ceil((rl.retryAfterMs ?? 0) / 1000),
+    );
+    return NextResponse.json(
+      { error: "Zbyt wiele prób. Poczekaj chwilę." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSec) },
+      },
+    );
+  }
 
   let body: unknown;
   try {

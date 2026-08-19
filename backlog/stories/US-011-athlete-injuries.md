@@ -4,12 +4,12 @@ title: Kontuzje zawodnika - lista z severity
 role: trener
 priority: P1
 estimate: M
-status: InE2E
+status: Done
 dependencies: [US-002, US-003]
 epic: EPIC-A
 design_required: true
 created: 2026-04-08
-updated: 2026-04-16
+updated: 2026-04-24
 sprint: Sprint 2
 ---
 

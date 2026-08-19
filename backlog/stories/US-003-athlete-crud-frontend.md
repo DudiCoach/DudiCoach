@@ -4,12 +4,12 @@ title: Frontend lista i edycja zawodnika z auto-save
 role: trener
 priority: P0
 estimate: M
-status: InE2E
+status: Done
 dependencies: [US-001, US-002]
 epic: EPIC-A
 design_required: true
 created: 2026-04-08
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # US-003 — Frontend lista + edycja zawodnika z auto-save

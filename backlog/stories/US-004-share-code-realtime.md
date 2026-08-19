@@ -4,12 +4,12 @@ title: Share code i panel zawodnika z real-time sync
 role: trener, zawodnik
 priority: P0
 estimate: L
-status: InE2E
+status: Done
 dependencies: [US-002, US-003]
 epic: EPIC-C
 design_required: true
 created: 2026-04-08
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # US-004 — Share code + panel zawodnika + real-time sync
