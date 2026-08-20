@@ -112,11 +112,9 @@ jobs:
     name: e2e-preview
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
-      E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
-      PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
-    if: ${{ env.E2E_COACH_EMAIL != '' && env.E2E_COACH_PASSWORD != '' && env.PLAYWRIGHT_BASE_URL != '' }}
+    # secrets and env contexts are not usable in job-level `if`, so gating uses
+    # a repo variable; operator sets E2E_ENABLED=true together with the secrets.
+    if: ${{ vars.E2E_ENABLED == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -127,6 +125,16 @@ jobs:
           cache: npm
       - name: Install deps
         run: npm ci
+      - name: Verify E2E secrets configured
+        env:
+          E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
+          E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
+          PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
+        run: |
+          if [ -z "$E2E_COACH_EMAIL" ] || [ -z "$E2E_COACH_PASSWORD" ] || [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "E2E secrets missing. Set E2E_ENABLED=true together with E2E_COACH_EMAIL, E2E_COACH_PASSWORD and PLAYWRIGHT_BASE_URL (a PREVIEW deployment URL - never production)." >&2
+            exit 1
+          fi
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
       - name: E2E coach flows against the deployed preview
