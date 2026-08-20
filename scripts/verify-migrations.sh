@@ -29,6 +29,8 @@ fi
 
 if ! docker ps --format '{{.Names}}' | grep -q '^supabase_db_'; then
   echo "Starting local Supabase stack..."
+  # Clear stale stack state that can hold project ports on reused runners.
+  $SUPABASE stop --no-backup >/dev/null 2>&1 || true
   $SUPABASE start
 fi
 
