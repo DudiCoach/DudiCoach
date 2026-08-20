@@ -57,7 +57,8 @@ mkdir -p "${TMP}/moved"
 restore_files() {
   local f
   for f in "${TMP}"/moved/*.sql; do
-    [ -f "${f}" ] && mv "${f}" "${MIG_DIR}/"
+    [ -f "${f}" ] || continue
+    mv "${f}" "${MIG_DIR}/"
   done
 }
 trap 'restore_files; rm -rf "${TMP}"' EXIT
