@@ -82,20 +82,26 @@ Wtedy widzę komunikat konfliktu "Wpis progresji dla tego ćwiczenia i dnia już
 I rekord nie jest podmieniany bez mojej wiedzy
 ```
 
-### AC-6: Edycja inline z auto-save i usuwanie z potwierdzeniem
+### AC-6: Edycja inline z auto-save
 
 ```gherkin
 Zakładając, że widzę wpis w historii
 Kiedy zmieniam kg, powtórzenia, serie, datę lub notatkę
 Wtedy zmiana zapisuje się automatycznie (auto-save) i widzę status zapisu
 I po odświeżeniu strony zmiana jest widoczna
+```
+
+### AC-7: Usuwanie z potwierdzeniem
+
+```gherkin
+Zakładając, że widzę wpis w historii
 Kiedy klikam "Usuń" przy wpisie
 Wtedy widzę dialog potwierdzenia
 Kiedy potwierdzam
 Wtedy wpis znika z wykresu, historii i bazy
 ```
 
-### AC-7: Walidacja formularza
+### AC-8: Walidacja formularza
 
 ```gherkin
 Kiedy próbuję dodać wpis bez nazwy ćwiczenia lub z pustym/zerowym obciążeniem
@@ -103,18 +109,18 @@ Wtedy przycisk "Dodaj wpis" jest nieaktywny
 I widzę komunikaty walidacji przy pustych polach
 ```
 
-### AC-8: Bezpieczeństwo
+### AC-9: Bezpieczeństwo
 
 ```gherkin
 Zakładając, że zawodnik należy do trenera A
 Kiedy trener B lub anonim próbuje odczytać/zapisać progresje tego zawodnika (API)
-Wtedy żądanie kończy się 401/403 (RLS: brak dostępu)
+Wtedy żądanie kończy się 401 (niezalogowany) lub 404 (cudzy zawodnik/wpis; RLS: brak dostępu)
 ```
 
 ## Dane (podsumowanie, szczegóły w designie)
 
-- Tabela `load_progressions`: `id`, `athlete_id` (FK cascade), `exercise_name`, `entry_date`, `weight_kg` (numeric > 0), `reps`, `sets`, `note` (≤1000), `source ('coach'|'athlete')`, `created_at`, `updated_at`.
-- Unikalność dzienna: funkcyjny index `(athlete_id, lower(btrim(exercise_name)), entry_date)` — odporny na wielkość liter i whitespace.
+- Tabela `load_progressions`: `id`, `athlete_id` (FK cascade), `exercise_name` (≤100), `entry_date`, `weight_kg` (numeric, 0.1–9999.9), `reps`, `sets`, `note` (≤1000), `source ('coach'|'athlete')`, `created_at`, `updated_at`.
+- Unikalność dzienna: funkcyjny index `(athlete_id, lower(btrim(exercise_name)), entry_date)` — odporny na wielkość liter oraz wiodące/końcowe whitespace.
 - RLS coach-owner tylko (wzorzec `injuries`/`diagnostic_findings`); brak anon policy; brak public RPC; `source` wymuszane server-side na `'coach'`.
 - Wykres: własny SVG (bez nowej zależności npm).
 

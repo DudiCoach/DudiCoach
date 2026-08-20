@@ -45,9 +45,9 @@ Migration `supabase/migrations/20260820090000_US-013_load_progressions.sql`
 create table public.load_progressions (
   id            uuid         primary key default gen_random_uuid(),
   athlete_id    uuid         not null references public.athletes(id) on delete cascade,
-  exercise_name text         not null,
+  exercise_name varchar(100) not null,
   entry_date    date         not null default current_date,
-  weight_kg     numeric(6,1) not null check (weight_kg > 0),
+  weight_kg     numeric(6,1) not null check (weight_kg > 0 and weight_kg <= 9999.9),
   reps          varchar(20),
   sets          varchar(20),
   note          varchar(1000),
@@ -57,11 +57,8 @@ create table public.load_progressions (
   updated_at    timestamptz  not null default now()
 );
 
--- one entry per exercise per day, case/whitespace-insensitive
+-- one entry per exercise per day, case/leading-trailing-whitespace-insensitive
 create unique index load_progressions_unique_day
-  on public.load_progressions (athlete_id, lower(btrim(exercise_name)), entry_date);
-
-create index load_progressions_athlete_exercise_date
   on public.load_progressions (athlete_id, lower(btrim(exercise_name)), entry_date);
 
 create trigger load_progressions_updated_at
@@ -74,13 +71,24 @@ comment on table public.load_progressions is
 
 - `exercise_name` is free text (plans store exercises as JSONB free text; a FK
   would break athletes without plans). API normalizes: trim + collapse
-  internal whitespace, max 100 chars.
-- The functional unique index rejects `(Squat, 2026-08-19)` vs
-  `(squat, 2026-08-19)` — case/whitespace-insensitive per-day uniqueness.
-- `weight_kg numeric(6,1)` — range 0.1–9999.9 kg, `> 0` check. `reps`/`sets`
-  are short free-text (e.g. "8", "6-8", "3x5") — nullable, max 20 chars.
+  internal whitespace; the DB cap `varchar(100)` mirrors the API max (the app
+  path is direct PostgREST as `authenticated` — same rationale as US-010
+  G15). The functional unique index rejects `(Squat, 2026-08-19)` vs
+  `(squat, 2026-08-19)` — case- and leading/trailing-whitespace-insensitive
+  per-day uniqueness. Internal-whitespace variants ("Squat  Row" vs
+  "Squat Row") are only closed by the API normalization; a direct-PostgREST
+  caller could create them (data-integrity nuance, no privilege boundary).
+- `weight_kg numeric(6,1)` — range 0.1–9999.9 kg enforced by CHECK (mirrors
+  the zod cap). `reps`/`sets` are short free-text (e.g. "8", "6-8", "3x5") —
+  nullable, max 20 chars.
 - `source` is server-forced to `'coach'` on insert (the client never sends
   it); `'athlete'` entries arrive later via the EPIC-C share-code path.
+  Residual risk (documented): the DB check allows both values, so a
+  coach-session caller writing directly via PostgREST could insert
+  `source='athlete'` — no privilege escalation; consequence is badge
+  mislabeling ("● zawodnik") in EPIC-C. A BEFORE INSERT trigger forcing
+  `'coach'` is deliberately NOT added (EPIC-C would need to drop it; the
+  route-level forcing covers the app path).
 - `entry_date` (not `date`) to avoid the reserved-word shadowing.
 
 ### Rollback
@@ -103,9 +111,13 @@ comment on table public.load_progressions is
   SELECT to `anon` (RLS still blocks anon reads; grant mirrors the cloud
   default), SELECT on `athletes` to `authenticated` (policy subquery).
 - All API routes call `requireAuth` server-side; ownership is enforced by RLS
-  and route-level 404 semantics identical to diagnostics routes.
+  and route-level 404 semantics identical to diagnostics routes (cross-coach
+  reads/writes resolve to 404 — non-leaky; 401 only when unauthenticated).
 - `note` free text, validated server-side (≤1000) and capped in DB
   (`varchar(1000)`), same deviation rationale as US-010.
+- Free-text fields (`exercise_name`, `note`, `reps`, `sets`) are rendered by
+  React as text nodes / attribute values (`title` tooltips on chart bars) —
+  React escapes by default; no raw-HTML sink exists.
 
 ## 4. API
 
@@ -192,7 +204,11 @@ the migration.
 - cross-coach: coach B cannot select/insert/update/delete coach A entries.
 - coach-owner: full CRUD works for owner.
 - per-day uniqueness: second insert same (athlete, exercise_name, entry_date)
-  → unique violation; case-variant ("Squat" vs "squat") also rejected.
+  → unique violation; case-variant ("Squat" vs "squat") and
+  leading/trailing-whitespace variant also rejected.
+- caps: `exercise_name varchar(100)` + `weight_kg` upper CHECK ≤ 9999.9
+  (behavioral probe: 101-char name and 10000 kg both rejected, US-010 G15
+  pattern).
 - checks: `weight_kg <= 0` rejected; invalid `source` rejected; `source`
   defaults to `'coach'`.
 - cascade: athlete delete removes entries.
