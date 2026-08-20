@@ -175,11 +175,14 @@ function ProgressionEntryRow({
   const [reps, setReps] = useState(entry.reps ?? "");
   const [sets, setSets] = useState(entry.sets ?? "");
   const [note, setNote] = useState(entry.note ?? "");
+  const [entryDate, setEntryDate] = useState(entry.entry_date);
+  const [conflictError, setConflictError] = useState(false);
 
   const lastPersistedWeight = useRef(String(entry.weight_kg));
   const lastPersistedReps = useRef(entry.reps ?? "");
   const lastPersistedSets = useRef(entry.sets ?? "");
   const lastPersistedNote = useRef(entry.note ?? "");
+  const lastPersistedDate = useRef(entry.entry_date);
 
   const updateMutation = useUpdateProgression(athleteId);
 
@@ -188,7 +191,9 @@ function ProgressionEntryRow({
     reps?: string;
     sets?: string;
     note?: string;
+    entry_date?: string;
   }) {
+    setConflictError(false);
     onSaveStateChange("saving");
     updateMutation.mutate(
       { entryId: entry.id, input: patch },
@@ -206,14 +211,25 @@ function ProgressionEntryRow({
           if (patch.note !== undefined) {
             lastPersistedNote.current = patch.note;
           }
+          if (patch.entry_date !== undefined) {
+            lastPersistedDate.current = patch.entry_date;
+          }
           onSaveStateChange("saved");
         },
-        onError: () => {
+        onError: (error) => {
           setWeight(lastPersistedWeight.current);
           setReps(lastPersistedReps.current);
           setSets(lastPersistedSets.current);
           setNote(lastPersistedNote.current);
-          onSaveStateChange("error");
+          setEntryDate(lastPersistedDate.current);
+          if (
+            error instanceof Error &&
+            error.message.includes("już istnieje")
+          ) {
+            setConflictError(true);
+          } else {
+            onSaveStateChange("error");
+          }
         },
       },
     );
@@ -299,10 +315,35 @@ function ProgressionEntryRow({
         </div>
 
         <div>
-          <p className="mb-1 block text-xs font-medium text-muted-foreground">
+          <label
+            htmlFor={`prog-date-${entry.id}`}
+            className="mb-1 block text-xs font-medium text-muted-foreground"
+          >
             {pl.coach.athlete.progressions.field.entryDate}
-          </p>
-          <p className="text-sm text-foreground">{entry.entry_date}</p>
+          </label>
+          <input
+            id={`prog-date-${entry.id}`}
+            type="date"
+            value={entryDate}
+            disabled={disabled}
+            onChange={(event) => setEntryDate(event.target.value)}
+            onBlur={() => {
+              if (
+                entryDate === lastPersistedDate.current ||
+                entryDate === ""
+              ) {
+                setEntryDate(lastPersistedDate.current);
+                return;
+              }
+              persist({ entry_date: entryDate });
+            }}
+            className="border-border bg-input text-foreground rounded-input w-full border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          {conflictError && (
+            <p role="alert" className="mt-1.5 text-xs text-destructive">
+              {pl.coach.athlete.progressions.duplicate}
+            </p>
+          )}
         </div>
       </div>
 

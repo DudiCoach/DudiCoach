@@ -308,6 +308,8 @@ export const pl = {
         validation: {
           weightInvalid: "Obciążenie musi być liczbą od 0.1 do 9999.9 kg.",
         },
+        duplicate:
+          "Wpis progresji dla tego ćwiczenia i dnia już istnieje.",
       },
       tests: {
         sectionTitle: "Testy sprawnościowe",

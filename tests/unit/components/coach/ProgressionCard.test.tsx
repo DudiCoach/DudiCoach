@@ -228,6 +228,98 @@ describe("ProgressionCard", () => {
     expect(updateMutate).not.toHaveBeenCalled();
   });
 
+  it("persists a date change on blur and shows the saved state", () => {
+    const { updateMutate } = setupMutations();
+    render(
+      <ProgressionCard
+        athleteId="a1"
+        exerciseName="Przysiad"
+        entries={[makeEntry()]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Przysiad/i }));
+    const dateInput = screen.getByLabelText(/Data/i);
+    fireEvent.change(dateInput, { target: { value: "2026-08-02" } });
+    fireEvent.blur(dateInput);
+
+    expect(updateMutate).toHaveBeenCalledWith(
+      { entryId: "entry-uuid-001", input: { entry_date: "2026-08-02" } },
+      expect.any(Object),
+    );
+    const onSuccess = updateMutate.mock.calls[0][1].onSuccess as () => void;
+    act(() => onSuccess());
+    expect(screen.getByText("Zapisano")).toBeInTheDocument();
+  });
+
+  it("does not PATCH when the date is unchanged on blur", () => {
+    const { updateMutate } = setupMutations();
+    render(
+      <ProgressionCard
+        athleteId="a1"
+        exerciseName="Przysiad"
+        entries={[makeEntry()]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Przysiad/i }));
+    fireEvent.blur(screen.getByLabelText(/Data/i));
+    expect(updateMutate).not.toHaveBeenCalled();
+  });
+
+  it("reverts the date and shows the conflict message when the save fails with 409", () => {
+    const { updateMutate } = setupMutations();
+    render(
+      <ProgressionCard
+        athleteId="a1"
+        exerciseName="Przysiad"
+        entries={[makeEntry()]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Przysiad/i }));
+    const dateInput = screen.getByLabelText(/Data/i);
+    fireEvent.change(dateInput, { target: { value: "2026-08-02" } });
+    fireEvent.blur(dateInput);
+    const onError = updateMutate.mock.calls[0][1]
+      .onError as (error: Error) => void;
+    act(() =>
+      onError(
+        new Error(
+          "Wpis progresji dla tego ćwiczenia i dnia już istnieje.",
+        ),
+      ),
+    );
+
+    expect(screen.getByLabelText(/Data/i)).toHaveValue("2026-08-01");
+    expect(
+      screen.getByText(/Wpis progresji dla tego ćwiczenia i dnia już istnieje/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Błąd zapisu")).not.toBeInTheDocument();
+  });
+
+  it("reverts the date and shows the generic error when the save fails otherwise", () => {
+    const { updateMutate } = setupMutations();
+    render(
+      <ProgressionCard
+        athleteId="a1"
+        exerciseName="Przysiad"
+        entries={[makeEntry()]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Przysiad/i }));
+    const dateInput = screen.getByLabelText(/Data/i);
+    fireEvent.change(dateInput, { target: { value: "2026-08-02" } });
+    fireEvent.blur(dateInput);
+    const onError = updateMutate.mock.calls[0][1]
+      .onError as (error: Error) => void;
+    act(() => onError(new Error("server down")));
+
+    expect(screen.getByLabelText(/Data/i)).toHaveValue("2026-08-01");
+    expect(screen.getByText("Błąd zapisu")).toBeInTheDocument();
+  });
+
   it("deletes only after a confirmed dialog", () => {
     const { deleteMutate } = setupMutations();
     const confirmMock = vi.fn().mockReturnValue(false);
