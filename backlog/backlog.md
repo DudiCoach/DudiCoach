@@ -28,7 +28,7 @@
 | US-004 | Share code + panel zawodnika + real-time | EPIC-C | P0 | L | Done | Review Approve 2026-04-15; preview E2E pass 2026-04-16 |
 | US-005 | Generowanie planu AI przez Claude | EPIC-B | P0 | L | Done | Review Approve 2026-04-15; preview E2E pass 2026-04-16 |
 
-## Current Sprint — Sprint 2 (Hardening + Athlete Data)
+## Completed — Sprint 2 (Hardening + Athlete Data)
 
 | ID | Title | Epic | Priority | Estimate | Status | Notes |
 |---|---|---|---|---|---|---|
@@ -37,6 +37,13 @@
 | US-011 | Kontuzje zawodnika - lista z severity | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `4/4 passed` (2026-04-24); E2E/runtime closed |
 | US-012 | Testy sprawnosciowe - dynamiczne per sport | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `8/8 passed` (2026-04-24); E2E/runtime closed |
 | US-025 | Panel zawodnika - wyswietlanie planu treningowego | EPIC-B | P1 | M | Done | PR #30 + smoke #31; production E2E 16/4/0 (16 passed, 4 skipped by design) + G9 2026-08-18 |
+
+## Completed — Sprint 3 (Athlete Health Data)
+
+| ID | Title | Epic | Priority | Estimate | Status | Notes |
+|---|---|---|---|---|---|---|
+| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Done | Implementation PR #77 `6abe66b`; story Done PR #78 `051287b` (2026-08-19) |
+| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Done | Implementation PR #81 `ca0a058`; story Done PR #82 `340da75`; AC-6 date-edit rework PR #83 `8711709` (2026-08-20) |
 
 ## Operational Notes (2026-04-15)
 
@@ -84,13 +91,15 @@
 - **Stabilization audit findings** (read-only, 2026-08-20): the `peaklab` rotation is still
   pending (P0, user); production Supabase migration state and Vercel async mode are
   unverified (needs operator tokens); US-014 and US-026 lack repository G9 runtime
-  evidence; `verify-migrations.sh` upgrade replay applied US-010/US-013 before the outcome
-  migrations (out-of-order vs production) — fixed in PR (chronological replay, ALL PASS);
-  CI now has secret-scan + gated e2e-preview jobs; Playwright job is gated on secrets
-  (`E2E_COACH_EMAIL`, `E2E_COACH_PASSWORD`, `PLAYWRIGHT_BASE_URL` — operator to set).
-- **Backlog fully Done** — next work requires an owner decision: structured session
-  outcomes (Athlete Context PR2, US-022 after ID canonicalization) vs US-015 FMS
-  snapshots vs EPIC-B/C roadmap items.
+  evidence. Follow-up work is in **PR #84 (open, pending merge)**: `verify-migrations.sh`
+  upgrade replay fixed to apply migrations in true production order (local run:
+  `verify-migrations.sh` ALL PASS — 3 phases; CI verification runs once #84 is merged) and
+  CI gains `secret-scan` (gitleaks) + `e2e-preview` jobs (the latter gated on secrets
+  `E2E_COACH_EMAIL`/`E2E_COACH_PASSWORD`/`PLAYWRIGHT_BASE_URL` — operator to configure;
+  `PLAYWRIGHT_BASE_URL` MUST point at a preview deployment, never production).
+- **All tracked stories are Done** (US-015/US-016/US-017/US-018 remain Draft ideas) — next
+  work requires an owner decision: structured session outcomes (Athlete Context PR2,
+  US-022 after ID canonicalization) vs US-015 FMS snapshots vs EPIC-B/C roadmap items.
 
 ## Backlog - v1.1 (post-MVP)
 
