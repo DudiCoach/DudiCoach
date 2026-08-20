@@ -12,6 +12,7 @@ import PlanTabContent from "./PlanTabContent";
 import InjuriesTab from "./InjuriesTab";
 import TestsTab from "./TestsTab";
 import DiagnosticsTab from "./DiagnosticsTab";
+import ProgressionsTab from "./ProgressionsTab";
 
 interface AthleteEditorShellProps {
   athlete: Athlete;
@@ -22,7 +23,7 @@ const TABS: Tab[] = [
   { key: "tests", label: pl.coach.athlete.tabs.tests, disabled: false },
   { key: "injuries", label: pl.coach.athlete.tabs.injuries, disabled: false },
   { key: "diagnostics", label: pl.coach.athlete.tabs.diagnostics, disabled: false },
-  { key: "progressions", label: pl.coach.athlete.tabs.progressions, disabled: true },
+  { key: "progressions", label: pl.coach.athlete.tabs.progressions, disabled: false },
   { key: "plans", label: pl.coach.athlete.tabs.plans, disabled: false },
   { key: "online", label: pl.coach.athlete.tabs.online, disabled: false },
 ];
@@ -60,6 +61,7 @@ export default function AthleteEditorShell({ athlete }: AthleteEditorShellProps)
       {activeTab === "tests" && <TestsTab athlete={athlete} />}
       {activeTab === "injuries" && <InjuriesTab athlete={athlete} />}
       {activeTab === "diagnostics" && <DiagnosticsTab athlete={athlete} />}
+      {activeTab === "progressions" && <ProgressionsTab athlete={athlete} />}
       {activeTab === "plans" && <PlanTabContent athlete={athlete} />}
       {activeTab === "online" && <OnlineTab athlete={athlete} />}
     </div>
