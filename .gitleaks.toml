@@ -1,9 +1,10 @@
 # Gitleaks configuration
-
-Full-history scan (`workflow_dispatch`) failed on two verified NON-secret findings
-(run #32406808451, 2026-08-20): a synthetic test-fixture UUID and a sequence-diagram
-placeholder variable name. Allowlisted below by exact value/pattern so the scan stays
-fail-closed for everything else. Evidence: `docs/change-briefs/2026-08-20-gitleaks-allowlist-followups.md`.
+#
+# Full-history scan (workflow_dispatch) failed on two verified NON-secret findings
+# (run #32406808451, 2026-08-20): a synthetic test-fixture UUID and a sequence-diagram
+# placeholder variable name. Allowlisted below by exact value/pattern so the scan stays
+# fail-closed for everything else. Evidence:
+# docs/change-briefs/2026-08-20-gitleaks-allowlist-followups.md
 
 title = "DudiCoach gitleaks config"
 
