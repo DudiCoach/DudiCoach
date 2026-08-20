@@ -1,0 +1,15 @@
+# Gitleaks configuration
+
+Full-history scan (`workflow_dispatch`) failed on two verified NON-secret findings
+(run #32406808451, 2026-08-20): a synthetic test-fixture UUID and a sequence-diagram
+placeholder variable name. Allowlisted below by exact value/pattern so the scan stays
+fail-closed for everything else. Evidence: `docs/change-briefs/2026-08-20-gitleaks-allowlist-followups.md`.
+
+title = "DudiCoach gitleaks config"
+
+[allowlist]
+  description = "Verified non-secret values (2026-08-20): synthetic claim_token fixture in integration test; 'token' placeholder in US-026 sequence diagram"
+  regexes = [
+    '''9f7e4b80-4f79-470c-8371-89f0ed75e91f''',
+    '''fail_plan_job', jobId, token''',
+  ]
