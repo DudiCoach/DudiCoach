@@ -1,8 +1,8 @@
 # Training Planner AI - Backlog
 
 **Owner**: backlog-manager agent
-**Last updated**: 2026-08-18
-**Sprint**: Sprint 2 (Hardening + Athlete Data)
+**Last updated**: 2026-08-20
+**Sprint**: Sprint 3 (Athlete Health Data) — closed; backlog fully Done
 
 ## Status Legend
 
@@ -28,7 +28,7 @@
 | US-004 | Share code + panel zawodnika + real-time | EPIC-C | P0 | L | Done | Review Approve 2026-04-15; preview E2E pass 2026-04-16 |
 | US-005 | Generowanie planu AI przez Claude | EPIC-B | P0 | L | Done | Review Approve 2026-04-15; preview E2E pass 2026-04-16 |
 
-## Current Sprint — Sprint 2 (Hardening + Athlete Data)
+## Completed — Sprint 2 (Hardening + Athlete Data)
 
 | ID | Title | Epic | Priority | Estimate | Status | Notes |
 |---|---|---|---|---|---|---|
@@ -37,6 +37,13 @@
 | US-011 | Kontuzje zawodnika - lista z severity | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `4/4 passed` (2026-04-24); E2E/runtime closed |
 | US-012 | Testy sprawnosciowe - dynamiczne per sport | EPIC-A | P1 | M | Done | Final credentialed preview/staging E2E: `8/8 passed` (2026-04-24); E2E/runtime closed |
 | US-025 | Panel zawodnika - wyswietlanie planu treningowego | EPIC-B | P1 | M | Done | PR #30 + smoke #31; production E2E 16/4/0 (16 passed, 4 skipped by design) + G9 2026-08-18 |
+
+## Completed — Sprint 3 (Athlete Health Data)
+
+| ID | Title | Epic | Priority | Estimate | Status | Notes |
+|---|---|---|---|---|---|---|
+| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Done | Implementation PR #77 `6abe66b`; story Done PR #78 `051287b` (2026-08-19) |
+| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Done | Implementation PR #81 `ca0a058`; story Done PR #82 `340da75`; AC-6 date-edit rework PR #83 `8711709` (2026-08-20) |
 
 ## Operational Notes (2026-04-15)
 
@@ -73,14 +80,39 @@
 - OpenCode enablement moved to a minimal replacement PR (config only), separate from
   skills; no reuse of PR #69 commits.
 
+## Operational Notes (2026-08-20)
+
+- **US-010 and US-013 → Done** (implementation merged: #77, #81; story Done PRs #78, #82).
+- **US-013 AC-6 rework** (PR #83 `8711709`): date editing in progression rows was missing
+  (AC-6), and the E2E had a wrong chronology (▲ with decreasing data) plus non-deterministic
+  `.first()` selectors. Fixed: date auto-save with rollback + 409 conflict copy; E2E now
+  ascending (90 → 100 kg), id-based selectors, date-edit flow verified through reload.
+  Unit tests +4 (596 total).
+- **Stabilization audit findings** (read-only, 2026-08-20): the `peaklab` rotation is still
+  pending (P0, user); production Supabase migration state and Vercel async mode are
+  unverified (needs operator tokens); US-014 and US-026 lack repository G9 runtime
+  evidence. Remediation shipped in **PR #84 (merged 2026-08-20, `b7310c1`)**:
+  `verify-migrations.sh` upgrade replay now applies migrations in true production order
+  (clean replay / pre-check rejection / upgrade replay — `ALL PASS` in CI, run
+  #32377382084); CI gained `secret-scan` (gitleaks v3, fail-closed, `workflow_dispatch`
+  trigger for manual full-history scan) and `e2e-preview` (disabled until operator
+  activates: repo variable `E2E_ENABLED=true` + secrets `E2E_COACH_EMAIL`,
+  `E2E_COACH_PASSWORD`, `PLAYWRIGHT_BASE_URL`; the step guard rejects production domains;
+  `PLAYWRIGHT_BASE_URL` MUST point at a preview deployment, never production; use a
+  throwaway preview-only coach account — Playwright traces expose login bodies and the
+  repo is public).
+- **All tracked stories are Done** (US-015/US-016/US-017/US-018 remain Draft ideas) — next
+  work requires an owner decision: structured session outcomes (Athlete Context PR2,
+  US-022 after ID canonicalization) vs US-015 FMS snapshots vs EPIC-B/C roadmap items.
+
 ## Backlog - v1.1 (post-MVP)
 
 | ID | Title | Epic | Priority | Estimate | Status |
 |---|---|---|---|---|---|
-| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Ready | story `backlog/stories/US-010-fms-diagnostics.md` + design `docs/design/US-010-fms-diagnostics-design.md` (2026-08-19, G2 accepted) |
+| US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Done | story `backlog/stories/US-010-fms-diagnostics.md` + design `docs/design/US-010-fms-diagnostics-design.md`; implementation PR #77 `6abe66b` (2026-08-19) |
 | ~~US-011~~ | ~~Kontuzje zawodnika~~ | — | — | — | → Sprint 2 |
 | ~~US-012~~ | ~~Testy sprawnościowe~~ | — | — | — | → Sprint 2 |
-| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Ready | story `backlog/stories/US-013-load-progressions.md` + design `docs/design/US-013-load-progressions-design.md` (2026-08-19, G2 accepted) |
+| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Done | story `backlog/stories/US-013-load-progressions.md` + design `docs/design/US-013-load-progressions-design.md`; implementation PR #81 `ca0a058` (2026-08-20); AC-6 date-edit rework PR #83 `8711709` |
 | US-014 | Checkbox done + notatki zawodnika per cwiczenie | EPIC-C | P1 | M | Done | PRs #58/#60/#61/#62; reviews/US-014-review.md; RPC gate SQL tests wired (2026-08-18) |
 | US-026 | Async AI plan generation via job table & polling | EPIC-B | P0 | L | Done | PRs #39-#48; reviews/US-026-review.md; fixes in chore/us-014-us-026-reconcile (2026-08-18) |
 | US-015 | Historia snapshotow diagnostyki FMS | EPIC-A | P1 | M | Draft |
