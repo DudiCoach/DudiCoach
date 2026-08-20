@@ -121,6 +121,56 @@ export type Database = {
           },
         ]
       }
+      load_progressions: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          entry_date: string
+          exercise_name: string
+          id: string
+          note: string | null
+          reps: string | null
+          sets: string | null
+          source: string
+          updated_at: string
+          weight_kg: number
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          entry_date?: string
+          exercise_name: string
+          id?: string
+          note?: string | null
+          reps?: string | null
+          sets?: string | null
+          source?: string
+          updated_at?: string
+          weight_kg: number
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          entry_date?: string
+          exercise_name?: string
+          id?: string
+          note?: string | null
+          reps?: string | null
+          sets?: string | null
+          source?: string
+          updated_at?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_progressions_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       injuries: {
         Row: {
           athlete_id: string
