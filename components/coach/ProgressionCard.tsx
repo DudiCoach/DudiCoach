@@ -227,6 +227,7 @@ function ProgressionEntryRow({
             error.message.includes("już istnieje")
           ) {
             setConflictError(true);
+            onSaveStateChange("idle");
           } else {
             onSaveStateChange("error");
           }

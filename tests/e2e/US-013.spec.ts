@@ -287,8 +287,14 @@ test.describe("US-013 - load progressions", () => {
       // AC-6: date editing with auto-save; the change survives a reload.
       await card.locator("button[aria-expanded]").click();
       const dateInput = page.locator(`#prog-date-${previousEntry?.id}`);
-      const targetDate = dateNDaysAgo(2);
-      await dateInput.fill(targetDate);
+      // Shift one day back from the entry's own date so the test is
+      // independent of the current UTC day (avoids the midnight edge).
+      const targetDate = new Date(
+        `${previousEntry?.entry_date}T00:00:00Z`,
+      );
+      targetDate.setUTCDate(targetDate.getUTCDate() - 1);
+      const targetDateString = targetDate.toISOString().slice(0, 10);
+      await dateInput.fill(targetDateString);
       await dateInput.blur();
       await waitForEntries(
         page.request,
@@ -296,7 +302,8 @@ test.describe("US-013 - load progressions", () => {
         (entries) =>
           entries.some(
             (e) =>
-              e.id === previousEntry?.id && e.entry_date === targetDate,
+              e.id === previousEntry?.id &&
+              e.entry_date === targetDateString,
           ),
       );
 
@@ -305,7 +312,7 @@ test.describe("US-013 - load progressions", () => {
       await expect(card.getByText(/2 wpisy/)).toBeVisible();
       await card.locator("button[aria-expanded]").click();
       await expect(page.locator(`#prog-date-${previousEntry?.id}`)).toHaveValue(
-        targetDate,
+        targetDateString,
       );
 
       // AC-7: delete with confirmation.
