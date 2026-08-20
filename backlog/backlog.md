@@ -80,7 +80,7 @@
 | US-010 | Diagnostyka FMS - baza miesni + searchable dropdown | EPIC-A | P1 | XL | Ready | story `backlog/stories/US-010-fms-diagnostics.md` + design `docs/design/US-010-fms-diagnostics-design.md` (2026-08-19, G2 accepted) |
 | ~~US-011~~ | ~~Kontuzje zawodnika~~ | — | — | — | → Sprint 2 |
 | ~~US-012~~ | ~~Testy sprawnościowe~~ | — | — | — | → Sprint 2 |
-| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Draft |
+| US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Ready | story `backlog/stories/US-013-load-progressions.md` + design `docs/design/US-013-load-progressions-design.md` (2026-08-19, G2 accepted) |
 | US-014 | Checkbox done + notatki zawodnika per cwiczenie | EPIC-C | P1 | M | Done | PRs #58/#60/#61/#62; reviews/US-014-review.md; RPC gate SQL tests wired (2026-08-18) |
 | US-026 | Async AI plan generation via job table & polling | EPIC-B | P0 | L | Done | PRs #39-#48; reviews/US-026-review.md; fixes in chore/us-014-us-026-reconcile (2026-08-18) |
 | US-015 | Historia snapshotow diagnostyki FMS | EPIC-A | P1 | M | Draft |

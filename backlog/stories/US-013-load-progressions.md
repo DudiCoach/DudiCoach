@@ -4,7 +4,7 @@ title: Progresje obciazen - tracker z wykresem
 role: trener
 priority: P1
 estimate: L
-status: Draft
+status: Ready
 dependencies: [US-002, US-003]
 epic: EPIC-A
 design_required: true
