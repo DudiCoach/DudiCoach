@@ -5,12 +5,14 @@
 # Phases:
 #   1. Clean replay: all migrations applied to a fresh local Supabase DB,
 #      then schema/ACL/RLS security assertions + full behavior matrix.
-#   2a. Upgrade pre-check: a 17-migration DB seeded with a legacy row that is
+#   2a. Upgrade pre-check: a pre-outcome DB (all migrations except the
+#       outcome pair and anything newer) seeded with a legacy row that is
 #       valid under the legacy rule but fails the new POSIX trim rule MUST
 #       reject the migration.
-#   2b. Upgrade replay: a 17-migration DB with valid legacy data upgraded by
-#       the two new migration files, then security + behavior + upgrade
-#       assertions.
+#   2b. Upgrade replay: a pre-outcome DB with valid legacy data upgraded by
+#       the outcome migrations, then the remaining newer migrations applied
+#       in chronological order (same as production), then security +
+#       behavior + upgrade assertions.
 #
 # Usage: bash scripts/verify-migrations.sh
 # Requires: Docker engine running, supabase CLI resolvable via npx.
@@ -41,8 +43,32 @@ run_sql() {
 MIG_DIR="supabase/migrations"
 OUTCOME_A="${MIG_DIR}/20260727120000_athlete_session_outcome_schema.sql"
 OUTCOME_B="${MIG_DIR}/20260727120001_athlete_session_outcome_validate.sql"
+# Migrations that chronologically follow the outcome pair. In production they
+# are applied AFTER the outcome migrations, so they must be moved aside in the
+# upgrade phases to recreate the true pre-outcome state.
+NEWER_MIGRATIONS=""
+for f in "${MIG_DIR}"/20*.sql; do
+  if [[ "$(basename "${f}")" > "$(basename "${OUTCOME_B}")" ]]; then
+    NEWER_MIGRATIONS="${NEWER_MIGRATIONS} ${f}"
+  fi
+done
 TMP="$(mktemp -d)"
-trap 'if [ -f "${TMP}/outcome_a.sql" ]; then mv "${TMP}/outcome_a.sql" "${OUTCOME_A}"; fi; if [ -f "${TMP}/outcome_b.sql" ]; then mv "${TMP}/outcome_b.sql" "${OUTCOME_B}"; fi; rm -rf "${TMP}"' EXIT
+mkdir -p "${TMP}/moved"
+restore_files() {
+  local f
+  for f in "${TMP}"/moved/*.sql; do
+    [ -f "${f}" ] && mv "${f}" "${MIG_DIR}/"
+  done
+}
+trap 'restore_files; rm -rf "${TMP}"' EXIT
+move_aside() {
+  mv "${OUTCOME_A}" "${TMP}/moved/"
+  mv "${OUTCOME_B}" "${TMP}/moved/"
+  local f
+  for f in ${NEWER_MIGRATIONS}; do
+    mv "${f}" "${TMP}/moved/"
+  done
+}
 
 echo "== Phase 1: clean replay (all migrations on a fresh DB) =="
 $SUPABASE db reset >/dev/null
@@ -58,14 +84,13 @@ run_sql tests/sql/us013-load-progressions-gates.sql
 echo "   clean replay: PASS"
 
 echo "== Phase 2a: upgrade pre-check rejects invalid legacy rows =="
-mv "${OUTCOME_A}" "${TMP}/outcome_a.sql"
-mv "${OUTCOME_B}" "${TMP}/outcome_b.sql"
+move_aside
 $SUPABASE db reset >/dev/null
 run_sql tests/sql/fixtures/session-outcome-seed.sql
 run_sql tests/sql/fixtures/session-outcome-seed-legacy-invalid.sql
 set +e
 docker exec -i "${CONTAINER}" psql -U postgres -d postgres -X -q \
-  -v ON_ERROR_STOP=1 < "${TMP}/outcome_a.sql" >/dev/null 2>"${TMP}/err.log"
+  -v ON_ERROR_STOP=1 < "${TMP}/moved/$(basename "${OUTCOME_A}")" >/dev/null 2>"${TMP}/err.log"
 status=$?
 set -e
 if [ "${status}" -eq 0 ] || ! grep -q 'invalid row' "${TMP}/err.log"; then
@@ -75,14 +100,15 @@ if [ "${status}" -eq 0 ] || ! grep -q 'invalid row' "${TMP}/err.log"; then
 fi
 echo "   upgrade pre-check rejection: PASS"
 
-echo "== Phase 2b: upgrade replay on a 17-migration DB with legacy data =="
+echo "== Phase 2b: upgrade replay on a pre-outcome DB with legacy data =="
 $SUPABASE db reset >/dev/null
 run_sql tests/sql/fixtures/session-outcome-seed.sql
 run_sql tests/sql/fixtures/session-outcome-seed-legacy-valid.sql
-docker exec -i "${CONTAINER}" psql -U postgres -d postgres -X -q \
-  -v ON_ERROR_STOP=1 < "${TMP}/outcome_a.sql" >/dev/null
-docker exec -i "${CONTAINER}" psql -U postgres -d postgres -X -q \
-  -v ON_ERROR_STOP=1 < "${TMP}/outcome_b.sql" >/dev/null
+run_sql "${TMP}/moved/$(basename "${OUTCOME_A}")"
+run_sql "${TMP}/moved/$(basename "${OUTCOME_B}")"
+for f in ${NEWER_MIGRATIONS}; do
+  run_sql "${TMP}/moved/$(basename "${f}")"
+done
 run_sql tests/sql/outcome-schema-security.sql
 run_sql tests/sql/outcome-schema-behavior.sql
 run_sql tests/sql/outcome-upgrade-replay.sql
@@ -91,8 +117,7 @@ run_sql tests/sql/fixtures/us010-diagnostics-seed.sql
 run_sql tests/sql/us010-fms-gates.sql
 run_sql tests/sql/fixtures/us013-load-progressions-seed.sql
 run_sql tests/sql/us013-load-progressions-gates.sql
-mv "${TMP}/outcome_a.sql" "${OUTCOME_A}"
-mv "${TMP}/outcome_b.sql" "${OUTCOME_B}"
+restore_files
 echo "   upgrade replay: PASS"
 
 echo "MIGRATION VERIFICATION: ALL PASS"
