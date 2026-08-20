@@ -91,12 +91,16 @@
 - **Stabilization audit findings** (read-only, 2026-08-20): the `peaklab` rotation is still
   pending (P0, user); production Supabase migration state and Vercel async mode are
   unverified (needs operator tokens); US-014 and US-026 lack repository G9 runtime
-  evidence. Follow-up work is in **PR #84 (open, pending merge)**: `verify-migrations.sh`
-  upgrade replay fixed to apply migrations in true production order (local run:
-  `verify-migrations.sh` ALL PASS — 3 phases; CI verification runs once #84 is merged) and
-  CI gains `secret-scan` (gitleaks) + `e2e-preview` jobs (the latter gated on secrets
-  `E2E_COACH_EMAIL`/`E2E_COACH_PASSWORD`/`PLAYWRIGHT_BASE_URL` — operator to configure;
-  `PLAYWRIGHT_BASE_URL` MUST point at a preview deployment, never production).
+  evidence. Remediation shipped in **PR #84 (merged 2026-08-20, `b7310c1`)**:
+  `verify-migrations.sh` upgrade replay now applies migrations in true production order
+  (clean replay / pre-check rejection / upgrade replay — `ALL PASS` in CI, run
+  #32377382084); CI gained `secret-scan` (gitleaks v3, fail-closed, `workflow_dispatch`
+  trigger for manual full-history scan) and `e2e-preview` (disabled until operator
+  activates: repo variable `E2E_ENABLED=true` + secrets `E2E_COACH_EMAIL`,
+  `E2E_COACH_PASSWORD`, `PLAYWRIGHT_BASE_URL`; the step guard rejects production domains;
+  `PLAYWRIGHT_BASE_URL` MUST point at a preview deployment, never production; use a
+  throwaway preview-only coach account — Playwright traces expose login bodies and the
+  repo is public).
 - **All tracked stories are Done** (US-015/US-016/US-017/US-018 remain Draft ideas) — next
   work requires an owner decision: structured session outcomes (Athlete Context PR2,
   US-022 after ID canonicalization) vs US-015 FMS snapshots vs EPIC-B/C roadmap items.
