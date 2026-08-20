@@ -220,6 +220,7 @@ test.describe("US-013 - load progressions", () => {
         (e) => e.exercise_name === "Przysiad ze sztanga",
       );
       expect(createdEntry).toBeTruthy();
+      const createdEntryId = createdEntry?.id ?? "";
       expect(createdEntry?.entry_date).toBe(dateNDaysAgo(0));
 
       // AC-5: duplicate (exercise, date) -> 409 message, no overwrite.
@@ -233,11 +234,12 @@ test.describe("US-013 - load progressions", () => {
       const afterConflict = await listEntries(page.request, athleteId);
       expect(afterConflict).toHaveLength(1);
 
-      // AC-2/AC-4: second entry on a previous day -> ▲ badge + two bars.
+      // AC-2/AC-4: second entry on a previous day with a lower weight ->
+      // ascending chronology gives a positive delta -> ▲ badge + two bars.
       await openCreateForm(page);
       await page.getByLabel(/Nazwa ćwiczenia/i).fill("Przysiad ze sztanga");
       await page.getByLabel(/Data/i).fill(dateNDaysAgo(1));
-      await page.getByLabel(/Obciążenie \(kg\)/i).fill("110");
+      await page.getByLabel(/Obciążenie \(kg\)/i).fill("90");
       await submitCreateForm(page);
 
       await expect(
@@ -246,17 +248,20 @@ test.describe("US-013 - load progressions", () => {
       await expect(chart.locator("rect")).toHaveCount(2);
       await expect(card.getByText(/2 wpisy/)).toBeVisible();
 
-      await waitForEntries(
+      const withTwo = await waitForEntries(
         page.request,
         athleteId,
         (entries) => entries.length === 2,
       );
+      const previousEntry = withTwo.find(
+        (e) =>
+          e.exercise_name === "Przysiad ze sztanga" && e.weight_kg === 90,
+      );
+      expect(previousEntry).toBeTruthy();
 
-      // AC-6: inline edit with auto-save; change survives a reload.
+      // AC-6: inline edit with auto-save; weight change survives a reload.
       await card.locator("button[aria-expanded]").click();
-      const weightInput = page
-        .locator('input[id^="prog-weight-"]')
-        .first();
+      const weightInput = page.locator(`#prog-weight-${createdEntryId}`);
       await weightInput.fill("115");
       await weightInput.blur();
       await expect(
@@ -276,15 +281,50 @@ test.describe("US-013 - load progressions", () => {
       await page.reload();
       await page.getByRole("tab", { name: /Progresje/i }).click();
       await expect(
-        page.getByText(/▲ 5 kg/i),
+        page.getByText(/▲ 25 kg/i),
       ).toBeVisible({ timeout: 10_000 });
+
+      // AC-6: date editing with auto-save; the change survives a reload.
+      await card.locator("button[aria-expanded]").click();
+      const dateInput = page.locator(`#prog-date-${previousEntry?.id}`);
+      // Shift one day back from the entry's own date so the test is
+      // independent of the current UTC day (avoids the midnight edge).
+      const targetDate = new Date(
+        `${previousEntry?.entry_date}T00:00:00Z`,
+      );
+      targetDate.setUTCDate(targetDate.getUTCDate() - 1);
+      const targetDateString = targetDate.toISOString().slice(0, 10);
+      await dateInput.fill(targetDateString);
+      await dateInput.blur();
+      await waitForEntries(
+        page.request,
+        athleteId,
+        (entries) =>
+          entries.some(
+            (e) =>
+              e.id === previousEntry?.id &&
+              e.entry_date === targetDateString,
+          ),
+      );
+
+      await page.reload();
+      await page.getByRole("tab", { name: /Progresje/i }).click();
+      await expect(card.getByText(/2 wpisy/)).toBeVisible();
+      await card.locator("button[aria-expanded]").click();
+      await expect(page.locator(`#prog-date-${previousEntry?.id}`)).toHaveValue(
+        targetDateString,
+      );
 
       // AC-7: delete with confirmation.
       page.once("dialog", async (dialog) => {
         expect(dialog.type()).toBe("confirm");
         await dialog.accept();
       });
-      await card.getByRole("button", { name: /Usuń/i }).first().click();
+      const deletePreviousRow = card
+        .locator("li")
+        .filter({ has: page.locator(`#prog-date-${previousEntry?.id}`) })
+        .getByRole("button", { name: /Usuń/i });
+      await deletePreviousRow.click();
 
       await waitForEntries(
         page.request,
