@@ -112,7 +112,11 @@ jobs:
     name: e2e-preview
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ secrets.E2E_COACH_EMAIL != '' && secrets.E2E_COACH_PASSWORD != '' && secrets.PLAYWRIGHT_BASE_URL != '' }}
+    env:
+      E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
+      E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
+      PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
+    if: ${{ env.E2E_COACH_EMAIL != '' && env.E2E_COACH_PASSWORD != '' && env.PLAYWRIGHT_BASE_URL != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,13 +130,10 @@ jobs:
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
       - name: E2E coach flows against the deployed preview
-        env:
-          PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
-          E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
-          E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
-        run: npx playwright test tests/e2e/US-010.spec.ts tests/e2e/US-011.spec.ts tests/e2e/US-012.spec.ts tests/e2e/US-013.spec.ts --reporter=line
+        id: e2e
+        run: npx playwright test tests/e2e/US-010.spec.ts tests/e2e/US-011.spec.ts tests/e2e/US-012.spec.ts tests/e2e/US-013.spec.ts --reporter=line,html
       - name: Upload Playwright report
-        if: failure()
+        if: failure() && steps.e2e.conclusion == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
