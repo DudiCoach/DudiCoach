@@ -21,6 +21,15 @@ function formatWeight(weight: number): string {
   );
 }
 
+function entryCountLabel(count: number): string {
+  if (count === 1) return "wpis";
+  const mod100 = count % 100;
+  if (mod100 >= 12 && mod100 <= 14) return "wpisów";
+  const mod10 = count % 10;
+  if (mod10 >= 2 && mod10 <= 4) return "wpisy";
+  return "wpisów";
+}
+
 export default function ProgressionCard({
   athleteId,
   exerciseName,
@@ -32,7 +41,15 @@ export default function ProgressionCard({
   const deleteMutation = useDeleteProgression(athleteId);
 
   const sorted = [...entries].sort((a, b) =>
-    a.entry_date < b.entry_date ? -1 : a.entry_date > b.entry_date ? 1 : 0,
+    a.entry_date < b.entry_date
+      ? -1
+      : a.entry_date > b.entry_date
+        ? 1
+        : a.created_at < b.created_at
+          ? -1
+          : a.created_at > b.created_at
+            ? 1
+            : 0,
   );
   const last = sorted[sorted.length - 1];
   const previous = sorted[sorted.length - 2];
@@ -94,7 +111,7 @@ export default function ProgressionCard({
           {changeBadge()}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          {entries.length} {entries.length === 1 ? "wpis" : "wpisów"}
+          {entries.length} {entryCountLabel(entries.length)}
         </p>
       </button>
 

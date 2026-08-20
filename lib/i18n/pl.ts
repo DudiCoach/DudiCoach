@@ -298,7 +298,6 @@ export const pl = {
           exerciseNameRequired: "Podaj nazwę ćwiczenia.",
           entryDate: "Data",
           weight: "Obciążenie (kg)",
-          weightRequired: "Podaj obciążenie większe od 0.",
           reps: "Powtórzenia",
           repsPlaceholder: "np. 8 lub 6-8",
           sets: "Serie",
@@ -308,12 +307,6 @@ export const pl = {
         },
         validation: {
           weightInvalid: "Obciążenie musi być liczbą od 0.1 do 9999.9 kg.",
-          dateInvalid: "Podaj datę w formacie RRRR-MM-DD.",
-          exerciseTooLong: "Nazwa ćwiczenia może mieć maksymalnie 100 znaków.",
-        },
-        chart: {
-          weightLabel: "{weight} kg",
-          dateLabel: "{date}",
         },
       },
       tests: {

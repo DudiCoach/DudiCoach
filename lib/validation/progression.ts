@@ -15,7 +15,7 @@ const isoDateSchema = z
 export const createProgressionSchema = z.object({
   exercise_name: z.string().trim().min(1).max(100),
   entry_date: isoDateSchema,
-  weight_kg: z.number().positive().max(9999.9),
+  weight_kg: z.number().min(0.1).max(9999.9),
   reps: z.string().trim().max(20).optional(),
   sets: z.string().trim().max(20).optional(),
   note: z.string().trim().max(1000).optional(),

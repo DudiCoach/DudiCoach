@@ -34,7 +34,7 @@ export default function ProgressionsTab({ athlete }: ProgressionsTabProps) {
     byExercise.set(entry.exercise_name, group);
   }
   const exerciseGroups = [...byExercise.entries()].sort(([a], [b]) =>
-    a < b ? -1 : a > b ? 1 : 0,
+    a.localeCompare(b, "pl"),
   );
 
   return (

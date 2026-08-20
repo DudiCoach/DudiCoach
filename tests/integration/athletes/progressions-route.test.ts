@@ -329,6 +329,42 @@ describe("POST /api/athletes/[id]/progressions", () => {
     });
   });
 
+  it("strips hostile source/athlete_id from the body (server-controlled fields)", async () => {
+    setupAuthenticated();
+    const builder = makeBuilder({
+      singleSequence: [
+        { data: { id: ATHLETE_ID }, error: null },
+        { data: ENTRY, error: null },
+      ],
+    });
+    mockFrom.mockReturnValue(builder);
+
+    const response = await POST(
+      makeRequest("POST", {
+        exercise_name: ENTRY.exercise_name,
+        entry_date: ENTRY.entry_date,
+        weight_kg: ENTRY.weight_kg,
+        source: "athlete",
+        athlete_id: "another-athlete-uuid",
+      }) as Parameters<typeof POST>[0],
+      routeContext(),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(json.data).toEqual(ENTRY);
+    expect(builder.insert).toHaveBeenCalledWith({
+      athlete_id: ATHLETE_ID,
+      exercise_name: ENTRY.exercise_name,
+      entry_date: ENTRY.entry_date,
+      weight_kg: ENTRY.weight_kg,
+      reps: undefined,
+      sets: undefined,
+      note: undefined,
+      source: "coach",
+    });
+  });
+
   it("returns 404 for FK violation (athlete disappeared between checks)", async () => {
     setupAuthenticated();
     const builder = makeBuilder({

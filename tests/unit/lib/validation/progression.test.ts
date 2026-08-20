@@ -45,8 +45,8 @@ describe("createProgressionSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects weight outside (0, 9999.9]", () => {
-    for (const weight_kg of [0, -5, 10000]) {
+  it("rejects weight outside [0.1, 9999.9]", () => {
+    for (const weight_kg of [0, 0.05, -5, 10000]) {
       const result = createProgressionSchema.safeParse({ ...validInput, weight_kg });
       expect(result.success).toBe(false);
     }
