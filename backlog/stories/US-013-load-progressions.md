@@ -129,7 +129,7 @@ Wtedy żądanie kończy się 401 (niezalogowany) lub 404 (cudzy zawodnik/wpis; R
 - SQL gates (`tests/sql/us013-load-progressions-gates.sql` wpięte w `verify-migrations.sh`): cross-coach deny, anon deny, unikalność dzienna (w tym case-insensitive), check constraints (weight_kg > 0, source), cascade, moddatetime.
 - Integration: routes CRUD + auth + 409 + 404 (mock Supabase).
 - Unit: walidacja Zod, badge zmiany, komponent (formularz, karta, wykres SVG, stany UI).
-- E2E (env-gated, wzorzec US-010): pełny flow AC-1..AC-7 desktop + mobile.
+- E2E (env-gated, wzorzec US-010): pełny flow AC-1..AC-8 desktop + mobile.
 - Pełne: lint, typecheck, vitest, build, SQL suite (3 fazy).
 
 ## References

@@ -162,7 +162,7 @@ for ≤15 significant digits — safe for 9999.9).
 - Create form (top): exercise name text input with `<datalist>` suggestions
   from the athlete's existing tracked exercises, date input (default today),
   weight number input, reps/sets text inputs, notes textarea. Submit disabled
-  until exercise name + weight present (AC-7). On 409 the server message is
+  until exercise name + weight present (AC-8). On 409 the server message is
   rendered inline (form stays open).
 - Exercise cards (grouped by `exercise_name`, alphabetical): header with
   exercise name + change badge — delta between the last two entries' weights
@@ -234,7 +234,7 @@ entry, DELETE 204/404, ordering.
 
 ### E2E — `tests/e2e/US-013.spec.ts`
 
-Env-gated (E2E_COACH_EMAIL/PASSWORD, pattern of US-010): AC-1..AC-7 desktop +
+Env-gated (E2E_COACH_EMAIL/PASSWORD, pattern of US-010): AC-1..AC-8 desktop +
 Pixel 7 mobile, ephemeral fixture athlete + cleanup.
 
 ### Gates
