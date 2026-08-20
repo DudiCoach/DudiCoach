@@ -4,12 +4,12 @@ title: Progresje obciazen - tracker z wykresem
 role: trener
 priority: P1
 estimate: L
-status: Ready
+status: Done
 dependencies: [US-002, US-003]
 epic: EPIC-A
 design_required: true
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-20
 sprint: Sprint 3 (Athlete Health Data)
 ---
 
