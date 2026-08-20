@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+  # Manual full-history secret scan (gitleaks-action scans only the commit
+  # range on push/pull_request).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -94,3 +97,64 @@ jobs:
         run: npm ci
       - name: Supabase migration verification
         run: bash scripts/verify-migrations.sh
+
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks detect
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  e2e-preview:
+    name: e2e-preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # secrets and env contexts are not usable in job-level `if`, so gating uses
+    # a repo variable; operator sets E2E_ENABLED=true together with the secrets.
+    if: ${{ vars.E2E_ENABLED == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Verify E2E secrets configured
+        env:
+          E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
+          E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
+          PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
+        run: |
+          if [ -z "$E2E_COACH_EMAIL" ] || [ -z "$E2E_COACH_PASSWORD" ] || [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "E2E secrets missing. Set E2E_ENABLED=true together with E2E_COACH_EMAIL, E2E_COACH_PASSWORD and PLAYWRIGHT_BASE_URL (a PREVIEW deployment URL - never production)." >&2
+            exit 1
+          fi
+          case "$PLAYWRIGHT_BASE_URL" in
+            https://dudi-coach.vercel.app|https://dudicoach.app|http://dudi-coach.vercel.app|http://dudicoach.app)
+              echo "PLAYWRIGHT_BASE_URL must NOT point at the production deployment." >&2
+              exit 1
+              ;;
+          esac
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+      - name: E2E coach flows against the deployed preview
+        id: e2e
+        run: npx playwright test tests/e2e/US-010.spec.ts tests/e2e/US-011.spec.ts tests/e2e/US-012.spec.ts tests/e2e/US-013.spec.ts --reporter=line,html
+      - name: Upload Playwright report
+        if: failure() && steps.e2e.conclusion == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 3
