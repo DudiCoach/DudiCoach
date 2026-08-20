@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+  # Manual full-history secret scan (gitleaks-action scans only the commit
+  # range on push/pull_request).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -104,7 +107,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Gitleaks detect
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -135,6 +138,12 @@ jobs:
             echo "E2E secrets missing. Set E2E_ENABLED=true together with E2E_COACH_EMAIL, E2E_COACH_PASSWORD and PLAYWRIGHT_BASE_URL (a PREVIEW deployment URL - never production)." >&2
             exit 1
           fi
+          case "$PLAYWRIGHT_BASE_URL" in
+            https://dudi-coach.vercel.app|https://dudicoach.app|http://dudi-coach.vercel.app|http://dudicoach.app)
+              echo "PLAYWRIGHT_BASE_URL must NOT point at the production deployment." >&2
+              exit 1
+              ;;
+          esac
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
       - name: E2E coach flows against the deployed preview
