@@ -15,7 +15,7 @@ Zawodnik otrzymuje 6-znakowy kod od trenera i może w czasie rzeczywistym widzie
 - US-004 — Share code + panel zawodnika + real-time
 
 ### Post-MVP (v1.1)
-- US-014 — Checkbox done + notatki zawodnika
+- US-014 — Tekstowy feedback zawodnika per dzień/sesję planu
 
 ### v1.2+
 - US-022 — Ustrukturyzowany wynik sesji: status, RPE, wellbeing i ból (Athlete Context PR2)

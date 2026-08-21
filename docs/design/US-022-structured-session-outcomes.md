@@ -7,9 +7,10 @@
 ## 1. Problem
 
 PR1 (schema foundation, merged `9de3c7e` 2026-08-18) added nullable structured
-outcome columns (`session_date`, `wellbeing`, `pain_score`, `pain_location`,
-`pain_side`) with row-validity constraints, the Europe/Warsaw future-date trigger,
-and the partial context index — but no RPCs, routes, UI, or athlete-facing form yet.
+outcome columns (`session_date`, `session_status`, `session_rpe`, `wellbeing`,
+`pain_score`, `pain_location`, `pain_side`) with row-validity constraints, the
+Europe/Warsaw future-date trigger, and the partial context index — but no RPCs, routes,
+UI, or athlete-facing form yet.
 Athletes cannot report RPE/wellbeing/pain, and coaches cannot read structured
 outcomes. This is the product value layer of the Athlete Context roadmap.
 
@@ -19,14 +20,12 @@ outcomes. This is the product value layer of the Athlete Context roadmap.
   design PR2 (structured session outcomes: outcome RPCs, feedback route contract,
   athlete form, coach read/display) describe THE SAME scope: the athlete-facing
   feedback form is the RPE/pain reporting surface.
-- Decision proposed: **canonical US-022 = Athlete Context PR2** (structured session
-  outcomes). The backlog table (line 130) already disambiguates the AI-recommended
-  progressions line to **US-023** ("Progresje AI-rekomendowane"), so no collision with
-  the canonical US-022. The stale reference lives only in the EPIC-B epic doc
-  (`backlog/epics/EPIC-B-plan-generation.md:24`, still says "US-022 — Progresje
-  AI-rekomendowane") and should be corrected to US-023 when that epic is resumed.
-  Archive the EPIC-C one-liner as an alias of US-022; do not implement it as a
-  separate story.
+- Decision (2026-08-20): **canonical US-022 = Athlete Context PR2** (structured session
+  outcomes). The backlog v1.2+ table disambiguates the AI-recommended progressions line
+  to **US-023** ("Adaptacyjne generowanie planu z Athlete Context"), so no collision
+  with the canonical US-022. EPIC-B was corrected to US-023 in the 2026-08-20 backlog
+  reconcile; canonicalization is now complete. Archive the EPIC-C one-liner as an alias
+  of US-022; do not implement it as a separate story.
 
 ## 3. Scope (from design §9 PR2)
 

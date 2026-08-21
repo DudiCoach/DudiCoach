@@ -9,9 +9,9 @@ status: Planning (owner decision taken; G2 pending before code)
 
 ## Problem statement
 PR1 (merged `9de3c7e`, 2026-08-18) added nullable structured-outcome columns
-(`session_status`, `session_rpe`, `wellbeing`, `pain_score`, `pain_location`,
-`pain_side`) with row-validity constraints and the Europe/Warsaw future-date trigger,
-but no RPCs, routes, UI, or athlete-facing form. Athletes cannot report
+(`session_date`, `session_status`, `session_rpe`, `wellbeing`, `pain_score`,
+`pain_location`, `pain_side`) with row-validity constraints and the Europe/Warsaw
+future-date trigger, but no RPCs, routes, UI, or athlete-facing form. Athletes cannot report
 RPE/wellbeing/pain and coaches cannot read structured outcomes. This is the product
 value layer of the Athlete Context roadmap.
 
