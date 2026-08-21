@@ -20,9 +20,13 @@ outcomes. This is the product value layer of the Athlete Context roadmap.
   athlete form, coach read/display) describe THE SAME scope: the athlete-facing
   feedback form is the RPE/pain reporting surface.
 - Decision proposed: **canonical US-022 = Athlete Context PR2** (structured session
-  outcomes). Archive the EPIC-C one-liner as an alias of US-022; do not implement
-  it as a separate story. EPIC-B US-022 line ("Progresje AI-rekomendowane") must be
-  renumbered to avoid collision (candidate: US-029) when the epic is picked up.
+  outcomes). The backlog table (line 130) already disambiguates the AI-recommended
+  progressions line to **US-023** ("Progresje AI-rekomendowane"), so no collision with
+  the canonical US-022. The stale reference lives only in the EPIC-B epic doc
+  (`backlog/epics/EPIC-B-plan-generation.md:24`, still says "US-022 — Progresje
+  AI-rekomendowane") and should be corrected to US-023 when that epic is resumed.
+  Archive the EPIC-C one-liner as an alias of US-022; do not implement it as a
+  separate story.
 
 ## 3. Scope (from design §9 PR2)
 

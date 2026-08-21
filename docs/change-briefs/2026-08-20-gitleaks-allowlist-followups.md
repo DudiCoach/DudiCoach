@@ -19,7 +19,8 @@
 - Run #32406808451 (2026-08-20, workflow_dispatch on main): `secret-scan` failed,
   "leaks found: 2", 136 commits scanned. Findings:
   1. `tests/integration/internal/plan-jobs-worker-route.test.ts:36`
-     (commit 6c929a77042d6282c4d7a1785f2b28ca2413e04f) — synthetic test fixture
+     (gitleaks-reported line; the value sits in CLAIMED_JOB at line 59; commit
+     6c929a77042d6282c4d7a1785f2b28ca2413e04f) — synthetic test fixture
      `claim_token: "9f7e4b80-4f79-470c-8371-89f0ed75e91f"` next to
      `job-uuid-001`/`athlete-uuid-001`/`coach-uuid-001`. `claim_token` is an opaque
      string in `app/api/internal/plans/jobs/run/route.ts`; value is a UUID-shaped
@@ -48,7 +49,7 @@ static-analysis false positives, verified by inspection of the exact lines.
 
 - `.github/workflows/ci.yml` — no change; the allowlist config is auto-discovered by
   gitleaks-action@v3.
-- NEW `.gitleaks.toml` — allowlist, regex-scoped to the two verified values (NOT
+- NEW `.gitleaks.toml` — global exact-value allowlist for the two verified values (NOT
   path-scoped, so the rest of both files stays fully scanned).
 - NEW `docs/runbook/stabilization-followups.md` — operator runbook (steps 1-4) with
   evidence table.
