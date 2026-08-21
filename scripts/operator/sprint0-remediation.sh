@@ -2,10 +2,13 @@
 # Sprint 0 operator remediation — prepared by agent, run by owner/operator WITH credentials.
 # This script only inspects by default. Set MUTATE=1 to run state-changing commands.
 # Do NOT paste secrets here; supply them via your shell environment or tool login.
+# Required before mutation steps:
+#   gcloud auth login (and set project), supabase login, vercel login
+#   export SUPABASE_PROJECT_REF=<your-project-ref>   # for S0-3
+#   <INSTANCE> placeholder below must be replaced with your Cloud SQL instance id
 set -euo pipefail
 
 : "${MUTATE:=0}"
-REPO="DudiCoach/DudiCoach"
 
 echo "== Prereqs =="
 for t in gcloud supabase vercel gh; do
@@ -27,7 +30,7 @@ echo
 echo "== S0-3 Supabase reconciliation =="
 if [ "$MUTATE" = "1" ]; then
   supabase link --project-ref "$SUPABASE_PROJECT_REF"
-  supabase db remote commit --dry-run || true
+  supabase db pull || true
   echo "  Inspect direct DML grants for anon/authenticated on plan_session_feedback and remove them (RPC-only access)."
   echo "  Verify all 21 migration versions match local supabase/migrations."
 else
