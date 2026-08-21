@@ -101,9 +101,12 @@
   `PLAYWRIGHT_BASE_URL` MUST point at a preview deployment, never production; use a
   throwaway preview-only coach account — Playwright traces expose login bodies and the
   repo is public).
-- **All tracked stories are Done** (US-015/US-016/US-017/US-018 remain Draft ideas) — next
-  work requires an owner decision: structured session outcomes (Athlete Context PR2,
-  US-022 after ID canonicalization) vs US-015 FMS snapshots vs EPIC-B/C roadmap items.
+- **All tracked stories are Done** (US-015/US-016/US-017/US-018 remain Draft). **Owner
+  decision 2026-08-20**: next increment = **US-022** (structured session outcomes,
+  Athlete Context PR2); wellbeing/pain classified as **health data**; product merges
+  withheld until control-plane Sprint 0 (P0 `peaklab` rotation + Supabase Preview
+  reconciliation + branch-protection hardening) is closed. ID canonicalization applied
+  (see Backlog v1.2+ and `docs/change-briefs/2026-08-20-US-022-structured-outcomes.md`).
 
 ## Backlog - v1.1 (post-MVP)
 
@@ -113,7 +116,7 @@
 | ~~US-011~~ | ~~Kontuzje zawodnika~~ | — | — | — | → Sprint 2 |
 | ~~US-012~~ | ~~Testy sprawnościowe~~ | — | — | — | → Sprint 2 |
 | US-013 | Progresje obciazen - tracker z wykresem | EPIC-A | P1 | L | Done | story `backlog/stories/US-013-load-progressions.md` + design `docs/design/US-013-load-progressions-design.md`; implementation PR #81 `ca0a058` (2026-08-20); AC-6 date-edit rework PR #83 `8711709` |
-| US-014 | Checkbox done + notatki zawodnika per cwiczenie | EPIC-C | P1 | M | Done | PRs #58/#60/#61/#62; reviews/US-014-review.md; RPC gate SQL tests wired (2026-08-18) |
+| US-014 | Tekstowy feedback zawodnika per dzień/sesję planu | EPIC-C | P1 | M | Done | PRs #58/#60/#61/#62; reviews/US-014-review.md; RPC gate SQL tests wired (2026-08-18) |
 | US-026 | Async AI plan generation via job table & polling | EPIC-B | P0 | L | Done | PRs #39-#48; reviews/US-026-review.md; fixes in chore/us-014-us-026-reconcile (2026-08-18) |
 | US-015 | Historia snapshotow diagnostyki FMS | EPIC-A | P1 | M | Draft |
 | US-016 | Export planu do PDF | EPIC-B | P1 | S | Draft |
@@ -122,14 +125,18 @@
 | ~~US-019~~ | ~~Dashboard hydration~~ | — | — | — | → Sprint 2 |
 | ~~US-020~~ | ~~Unauth API routes~~ | — | — | — | → Sprint 2 |
 
-## Backlog - v1.2+ (nice-to-have)
+## Backlog - v1.2+ (planned, not yet in sprint)
 
-| ID | Title | Epic | Priority |
-|---|---|---|---|
-| US-021 | Galeria wideo cwiczen | EPIC-B | P2 |
-| US-022 | Raportowanie RPE i bolu przez zawodnika | EPIC-C | P2 |
-| US-023 | Progresje AI-rekomendowane na bazie feedbacku | EPIC-B | P2 |
-| US-024 | Template'y planow (duplikacja) | EPIC-B | P2 |
+| ID | Title | Epic | Priority | Status |
+|---|---|---|---|---|
+| US-021 | Galeria wideo ćwiczeń | EPIC-B | P2 | Draft |
+| US-022 | Ustrukturyzowany wynik sesji: status, RPE, wellbeing i ból (Athlete Context PR2) | EPIC-C | P2 | Draft planning |
+| US-023 | Adaptacyjne generowanie planu z Athlete Context (AI-progresje) | EPIC-B | P2 | Draft |
+| US-024 | Template'y planów (duplikacja) | EPIC-B | P2 | Draft |
+| US-027 | Athlete Context Builder v1 (PR3) | EPIC-C | P2 | Draft |
+| US-028 | Brief konsultacyjny trenera (PR4) | EPIC-C | P2 | Draft |
+| US-029 | Wykonanie ćwiczeń i notatki zawodnika per ćwiczenie | EPIC-C | P2 | Draft |
+| US-030 | Logowanie kg/progresji przez zawodnika i synchronizacja z trenerem | EPIC-C | P2 | Draft |
 
 ## Epics
 

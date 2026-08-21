@@ -1,6 +1,6 @@
 # US-022 — Structured Session Outcomes (Athlete Context PR2) — Planning
 
-**Status:** Draft planning — for owner decision + G2 approval before implementation
+**Status:** Owner decision taken 2026-08-20 (next increment; wellbeing/pain = health data); G2 approval still required before implementation
 **Lane:** C (schema-adjacent RPCs/API/UI on user data, private athlete data)
 **Source of truth:** `docs/design/athlete-context-system-design.md` §9 PR2
 

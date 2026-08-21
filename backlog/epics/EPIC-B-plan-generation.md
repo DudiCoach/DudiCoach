@@ -1,7 +1,7 @@
 ---
 id: EPIC-B
 title: Generowanie planów treningowych AI
-status: Planned
+status: InProgress
 ---
 
 # EPIC-B — Generowanie planów AI
@@ -20,9 +20,10 @@ Kluczowa wartość aplikacji: trener generuje spersonalizowane plany treningowe 
 - US-018 — Podsumowanie cyklu
 
 ### v1.2+
-- US-020 — Galeria wideo ćwiczeń
-- US-022 — Progresje AI-rekomendowane
-- US-023 — Template'y planów
+- US-021 — Galeria wideo ćwiczeń
+- US-023 — Adaptacyjne generowanie planu z Athlete Context (AI-progresje)
+- US-024 — Template'y planów
+- US-027 — Athlete Context Builder v1 (PR3)
 
 ## Success criteria
 - Plan generowany w <60s
