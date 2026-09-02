@@ -5,6 +5,7 @@
 set client_min_messages to warning;
 
 create temp table us022_result (name text primary key, status text not null default 'fail');
+grant select, insert, update on us022_result to anon, authenticated;
 
 do $$
 declare
