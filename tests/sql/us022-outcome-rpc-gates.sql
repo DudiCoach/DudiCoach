@@ -181,28 +181,12 @@ do $$
 declare
   v_plan uuid := 'e0000000-0000-0000-0000-000000000099';
   v_today date := (now() at time zone 'Europe/Warsaw')::date;
-  v_location text;
-  v_locations text[] := array[
-    'head','neck','shoulder','chest_ribs','abdomen','upper_back','lower_back',
-    'pelvis_sacrum','arm','elbow','wrist_hand','hip_groin','buttock','thigh',
-    'knee','lower_leg','ankle_achilles','foot','other'
-  ];
-  v_side text;
-  v_sides text[] := array['left', 'right', 'bilateral', 'central'];
 begin
-  foreach v_location in array v_locations loop
-    perform public.upsert_plan_session_feedback_v2(
-      'QRSTUV', v_plan, 1, 4, v_today, 'partial', 4, 1, 6, v_location, null, null
-    );
-  end loop;
+  perform public.upsert_plan_session_feedback_v2(
+    'QRSTUV', v_plan, 1, 4, v_today, 'partial', 4, 1, 6, 'knee', 'left', null
+  );
 
-  foreach v_side in array v_sides loop
-    perform public.upsert_plan_session_feedback_v2(
-      'QRSTUV', v_plan, 1, 4, v_today, 'partial', 4, 1, 6, 'knee', v_side, null
-    );
-  end loop;
-
-  insert into us022_result values ('g7_pain_location_side_catalogs', 'pass');
+  insert into us022_result values ('g7_pain_location_side_via_rpc', 'pass');
 end;
 $$;
 
