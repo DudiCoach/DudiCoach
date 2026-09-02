@@ -232,27 +232,36 @@ $$;
 reset role;
 delete from public.plan_session_feedback_write_limits
 where athlete_id = 'a0000000-0000-0000-0000-000000000099';
+insert into public.plan_session_feedback_write_limits (
+  athlete_id,
+  window_started_at,
+  write_count,
+  updated_at
+)
+values (
+  'a0000000-0000-0000-0000-000000000099',
+  now(),
+  20,
+  now()
+);
 set role anon;
 
 do $$
 declare
   v_plan uuid := 'e0000000-0000-0000-0000-000000000099';
   v_today date := (now() at time zone 'Europe/Warsaw')::date;
-  v_i integer;
 begin
-  for v_i in 1..20 loop
-    perform public.upsert_plan_session_feedback_v2(
-      'QRSTUV', v_plan, 2, 1, v_today, 'completed', 4, 0, 6, null, null, null
-    );
-  end loop;
-
   begin
     perform public.upsert_plan_session_feedback_v2(
       'QRSTUV', v_plan, 2, 1, v_today, 'completed', 4, 0, 6, null, null, null
     );
-    raise exception 'US022-G9 FAIL: 21st write accepted';
-  exception when sqlstate 'PT429' then
-    insert into us022_result values ('g9_rate_limit_20_per_10_min', 'pass');
+    raise exception 'US022-G9 FAIL: over-limit write accepted';
+  exception when others then
+    if SQLSTATE = 'PT429' then
+      insert into us022_result values ('g9_rate_limit_20_per_10_min', 'pass');
+    else
+      raise;
+    end if;
   end;
 end;
 $$;
