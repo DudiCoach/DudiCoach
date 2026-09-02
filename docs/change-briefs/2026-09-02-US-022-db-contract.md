@@ -32,8 +32,9 @@ Lane C: public write RPC, RLS/ACL, health data, rate limiting.
 - Next.js API route, UI, E2E, production deployment, cloud credential rotation.
 
 ## Required gates
-G5 SQL replay, G7 security review, G8 runtime/performance review, G6 independent review.
-G9 remains blocked until Sprint 0 cloud access is complete.
+G2 approval before implementation, G5 SQL replay, G7 security review, G8
+runtime/performance review, G6 independent review. G9 remains blocked until Sprint 0
+cloud access is complete.
 
 ## Expected files to change
 - `supabase/migrations/20260902120000_US-022_structured_session_outcome_rpcs.sql`

@@ -247,6 +247,17 @@ begin
       raise;
     end if;
   end;
+
+  begin
+    perform public.upsert_plan_session_feedback('QRSTUV', v_plan, 1, 6, 'legacy over-limit');
+    raise exception 'US022-G9 FAIL: over-limit legacy write accepted';
+  exception when others then
+    if SQLSTATE = 'PT429' then
+      insert into us022_result values ('g9_rate_limit_shared_with_v1', 'pass');
+    else
+      raise;
+    end if;
+  end;
 end;
 $$;
 
