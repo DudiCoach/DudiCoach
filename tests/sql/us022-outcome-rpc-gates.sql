@@ -237,7 +237,7 @@ declare
 begin
   begin
     perform public.upsert_plan_session_feedback_v2(
-      'QRSTUV', v_plan, 2, 1, v_today, 'completed', 4, 0, 6, null, null, null
+      'QRSTUV', v_plan, 1, 6, v_today, 'completed', 4, 0, 6, null, null, null
     );
     raise exception 'US022-G9 FAIL: over-limit write accepted';
   exception when others then
