@@ -5,9 +5,21 @@ import {
   feedbackTextSchema,
   feedbackWeekNumberSchema,
   publicFeedbackPostBodySchema,
+  publicFeedbackQuerySchema,
   sanitizeFeedbackText,
+  sessionOutcomeSchema,
   shareCodePathSchema,
 } from "@/lib/validation/plan-session-feedback";
+
+const VALID_OUTCOME = {
+  sessionDate: "2026-05-22",
+  sessionStatus: "completed",
+  sessionRpe: 7,
+  wellbeing: 4,
+  painScore: 2,
+  painLocation: "knee",
+  painSide: "left",
+} as const;
 
 describe("plan-session-feedback validation", () => {
   it("normalizes share code and accepts valid format", () => {
@@ -59,6 +71,105 @@ describe("plan-session-feedback validation", () => {
       dayNumber: 5,
       feedbackText: "test text",
     });
+  });
+
+  it("accepts v2 post body with complete outcome and optional feedback text", () => {
+    const parsed = publicFeedbackPostBodySchema.parse({
+      contractVersion: 2,
+      weekNumber: 2,
+      dayNumber: 5,
+      feedbackText: "  komentarz\x03  ",
+      outcome: VALID_OUTCOME,
+    });
+
+    expect(parsed).toEqual({
+      contractVersion: 2,
+      weekNumber: 2,
+      dayNumber: 5,
+      feedbackText: "komentarz",
+      outcome: VALID_OUTCOME,
+    });
+  });
+
+  it("allows v2 feedback text to be omitted", () => {
+    const parsed = publicFeedbackPostBodySchema.parse({
+      contractVersion: 2,
+      weekNumber: 2,
+      dayNumber: 5,
+      outcome: VALID_OUTCOME,
+    });
+
+    expect(parsed.feedbackText).toBeNull();
+  });
+
+  it("rejects incomplete v2 outcome", () => {
+    const result = publicFeedbackPostBodySchema.safeParse({
+      contractVersion: 2,
+      weekNumber: 2,
+      dayNumber: 5,
+      feedbackText: null,
+      outcome: {
+        sessionDate: "2026-05-22",
+        sessionStatus: "completed",
+        sessionRpe: 7,
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("enforces v2 outcome cross-field rules", () => {
+    expect(
+      sessionOutcomeSchema.safeParse({
+        ...VALID_OUTCOME,
+        sessionStatus: "skipped",
+        sessionRpe: 7,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      sessionOutcomeSchema.safeParse({
+        ...VALID_OUTCOME,
+        painScore: 0,
+        painLocation: "knee",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      sessionOutcomeSchema.safeParse({
+        ...VALID_OUTCOME,
+        painLocation: null,
+        painSide: "left",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects future v2 session date", () => {
+    const result = sessionOutcomeSchema.safeParse({
+      ...VALID_OUTCOME,
+      sessionDate: "9999-12-31",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects impossible v2 calendar date", () => {
+    const result = sessionOutcomeSchema.safeParse({
+      ...VALID_OUTCOME,
+      sessionDate: "2026-02-31",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("parses optional contractVersion=2 query flag", () => {
+    const parsed = publicFeedbackQuerySchema.parse({
+      weekNumber: "2",
+      dayNumber: "5",
+      contractVersion: "2",
+    });
+
+    expect(parsed).toEqual({ weekNumber: 2, dayNumber: 5, contractVersion: 2 });
   });
 
   it("sanitizeFeedbackText helper is deterministic", () => {

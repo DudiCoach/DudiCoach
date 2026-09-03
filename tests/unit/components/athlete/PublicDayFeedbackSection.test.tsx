@@ -14,9 +14,9 @@ const mockFetchPublicDayFeedback = vi.fn();
 const mockUpsertPublicDayFeedback = vi.fn();
 
 vi.mock("@/lib/api/plan-feedback", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/plan-feedback")>(
-    "@/lib/api/plan-feedback",
-  );
+  const actual = await vi.importActual<
+    typeof import("@/lib/api/plan-feedback")
+  >("@/lib/api/plan-feedback");
   return {
     ...actual,
     fetchPublicDayFeedback: (...args: unknown[]) =>
@@ -26,7 +26,9 @@ vi.mock("@/lib/api/plan-feedback", async () => {
   };
 });
 
-function makeRow(overrides: Partial<PlanSessionFeedbackRow> = {}): PlanSessionFeedbackRow {
+function makeRow(
+  overrides: Partial<PlanSessionFeedbackRow> = {},
+): PlanSessionFeedbackRow {
   return {
     id: "feedback-1",
     plan_id: "plan-1",
@@ -34,6 +36,13 @@ function makeRow(overrides: Partial<PlanSessionFeedbackRow> = {}): PlanSessionFe
     week_number: 1,
     day_number: 1,
     feedback_text: "Solid session",
+    session_date: null,
+    session_status: null,
+    session_rpe: null,
+    wellbeing: null,
+    pain_score: null,
+    pain_location: null,
+    pain_side: null,
     created_at: "2026-05-27T10:00:00Z",
     updated_at: "2026-05-27T10:00:00Z",
     ...overrides,
@@ -84,7 +93,9 @@ describe("PublicDayFeedbackSection", () => {
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
     fireEvent.change(textarea, { target: { value: "  New feedback  " } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     await waitFor(() => {
       expect(mockUpsertPublicDayFeedback).toHaveBeenCalledWith({
@@ -112,14 +123,18 @@ describe("PublicDayFeedbackSection", () => {
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
     fireEvent.change(textarea, { target: { value: "Second" } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     await waitFor(() => {
       expect(textarea).toHaveValue("Second");
     });
 
     fireEvent.change(textarea, { target: { value: "Third" } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     await waitFor(() => {
       expect(textarea).toHaveValue("Third");
@@ -132,7 +147,9 @@ describe("PublicDayFeedbackSection", () => {
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
     fireEvent.change(textarea, { target: { value: "   \n\t" } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     expect(mockUpsertPublicDayFeedback).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -145,7 +162,9 @@ describe("PublicDayFeedbackSection", () => {
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
     fireEvent.change(textarea, { target: { value: "a".repeat(2001) } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     expect(mockUpsertPublicDayFeedback).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -154,13 +173,17 @@ describe("PublicDayFeedbackSection", () => {
   });
 
   it("shows generic save error on failed request", async () => {
-    mockUpsertPublicDayFeedback.mockRejectedValueOnce(new PlanFeedbackRequestError());
+    mockUpsertPublicDayFeedback.mockRejectedValueOnce(
+      new PlanFeedbackRequestError(),
+    );
 
     setup();
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
     fireEvent.change(textarea, { target: { value: "Feedback" } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
@@ -177,7 +200,9 @@ describe("PublicDayFeedbackSection", () => {
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
     fireEvent.change(textarea, { target: { value: "Sensitive feedback" } });
-    fireEvent.click(screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }));
+    fireEvent.click(
+      screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save }),
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent(
@@ -194,7 +219,9 @@ describe("PublicDayFeedbackSection", () => {
   it("has accessible textarea label", async () => {
     setup();
 
-    expect(await screen.findByLabelText(/Tydzien 1, Dzien 1/)).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText(/Tydzien 1, Dzien 1/),
+    ).toBeInTheDocument();
   });
 
   it("disables save button while saving", async () => {
@@ -204,7 +231,9 @@ describe("PublicDayFeedbackSection", () => {
     setup();
 
     const textarea = await screen.findByLabelText(/Twoja informacja zwrotna/i);
-    const button = screen.getByRole("button", { name: pl.athletePanel.plan.feedback.save });
+    const button = screen.getByRole("button", {
+      name: pl.athletePanel.plan.feedback.save,
+    });
     const form = button.closest("form");
 
     fireEvent.change(textarea, { target: { value: "Saving now" } });
