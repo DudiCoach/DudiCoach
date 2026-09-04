@@ -581,7 +581,6 @@ export type Database = {
           p_week_number: number
         }
         Returns: {
-          athlete_id: string
           created_at: string
           day_number: number
           feedback_text: string | null
@@ -637,7 +636,6 @@ export type Database = {
           p_wellbeing: number
         }
         Returns: {
-          athlete_id: string
           created_at: string
           day_number: number
           feedback_text: string | null

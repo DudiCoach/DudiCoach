@@ -19,7 +19,6 @@ type SupabaseErrorLike = {
 type PlanSessionFeedbackRow = {
   id: string;
   plan_id: string;
-  athlete_id: string;
   week_number: number;
   day_number: number;
   feedback_text?: string | null;
@@ -34,7 +33,7 @@ type PlanSessionFeedbackRow = {
   updated_at: string;
 };
 
-type PublicPlanSessionFeedbackRow = Omit<PlanSessionFeedbackRow, "athlete_id">;
+type PublicPlanSessionFeedbackRow = PlanSessionFeedbackRow;
 type PublicFeedbackV2PostBody = Extract<
   PublicFeedbackPostBody,
   { contractVersion: 2 }
