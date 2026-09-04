@@ -169,6 +169,8 @@ jobs:
           retention-days: 3
       - name: US-022 public outcome smoke against the deployed preview
         env:
+          E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
+          E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
           E2E_US022_SHARE_CODE: ${{ secrets.E2E_US022_SHARE_CODE }}
           E2E_US022_WEEK_NUMBER: ${{ vars.E2E_US022_WEEK_NUMBER }}
           E2E_US022_DAY_NUMBER: ${{ vars.E2E_US022_DAY_NUMBER }}
