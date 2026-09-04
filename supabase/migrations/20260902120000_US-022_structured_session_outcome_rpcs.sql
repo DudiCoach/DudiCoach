@@ -223,7 +223,6 @@ create or replace function public.upsert_plan_session_feedback_v2(
 returns table (
   id uuid,
   plan_id uuid,
-  athlete_id uuid,
   week_number smallint,
   day_number smallint,
   feedback_text text,
@@ -430,7 +429,6 @@ begin
   returning
     psf.id,
     psf.plan_id,
-    psf.athlete_id,
     psf.week_number,
     psf.day_number,
     psf.feedback_text,
@@ -455,7 +453,6 @@ create or replace function public.get_plan_session_feedback_by_share_code_v2(
 returns table (
   id uuid,
   plan_id uuid,
-  athlete_id uuid,
   week_number smallint,
   day_number smallint,
   feedback_text text,
@@ -517,7 +514,6 @@ begin
   select
     psf.id,
     psf.plan_id,
-    psf.athlete_id,
     psf.week_number,
     psf.day_number,
     psf.feedback_text,

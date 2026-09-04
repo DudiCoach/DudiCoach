@@ -92,10 +92,12 @@ declare
   v_id uuid;
   v_text text;
   v_status text;
+  v_payload jsonb;
+  v_unexpected_keys text;
   v_rows integer;
 begin
-  select t.id, t.feedback_text, t.session_status
-  into v_id, v_text, v_status
+  select t.id, t.feedback_text, t.session_status, to_jsonb(t)
+  into v_id, v_text, v_status, v_payload
   from public.upsert_plan_session_feedback_v2(
     'qrstuv', v_plan, 1, 1, v_today, 'completed', 5, 0, 7, null, null, null
   ) t;
@@ -104,12 +106,58 @@ begin
     raise exception 'US022-G2 FAIL: outcome-only upsert mismatch';
   end if;
 
-  select t.feedback_text, t.session_status
-  into v_text, v_status
+  select pg_catalog.string_agg(k.key, ', ' order by k.key)
+  into v_unexpected_keys
+  from pg_catalog.jsonb_object_keys(v_payload) as k(key)
+  where k.key not in (
+    'id',
+    'plan_id',
+    'week_number',
+    'day_number',
+    'feedback_text',
+    'session_date',
+    'session_status',
+    'session_rpe',
+    'wellbeing',
+    'pain_score',
+    'pain_location',
+    'pain_side',
+    'created_at',
+    'updated_at'
+  );
+  if v_unexpected_keys is not null then
+    raise exception 'US022-G2 FAIL: public v2 upsert returned unexpected keys: %', v_unexpected_keys;
+  end if;
+
+  select t.feedback_text, t.session_status, to_jsonb(t)
+  into v_text, v_status, v_payload
   from public.get_plan_session_feedback_by_share_code_v2('QRSTUV', v_plan, 1, 1) t;
 
   if v_text is not null or v_status <> 'completed' then
     raise exception 'US022-G2 FAIL: v2 read mismatch';
+  end if;
+
+  select pg_catalog.string_agg(k.key, ', ' order by k.key)
+  into v_unexpected_keys
+  from pg_catalog.jsonb_object_keys(v_payload) as k(key)
+  where k.key not in (
+    'id',
+    'plan_id',
+    'week_number',
+    'day_number',
+    'feedback_text',
+    'session_date',
+    'session_status',
+    'session_rpe',
+    'wellbeing',
+    'pain_score',
+    'pain_location',
+    'pain_side',
+    'created_at',
+    'updated_at'
+  );
+  if v_unexpected_keys is not null then
+    raise exception 'US022-G2 FAIL: public v2 read returned unexpected keys: %', v_unexpected_keys;
   end if;
 
   select count(*) into v_rows
