@@ -6,7 +6,7 @@
  * Design: ADR-0001 (docs/adr/0001-auto-save-with-react-hook-form-tanstack-query.md)
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   FieldValues,
   FormState,
@@ -30,6 +30,7 @@ export interface UseAutoSaveReturn {
   isSaving: boolean;
   lastSavedAt: Date | null;
   saveError: string | null;
+  flush: () => void;
 }
 
 export function useAutoSave<TFormValues extends FieldValues>({
@@ -57,6 +58,8 @@ export function useAutoSave<TFormValues extends FieldValues>({
   // Keep latest form errors in a ref for the subscription callback.
   const errorsRef = useRef(formState.errors);
   errorsRef.current = formState.errors;
+
+  const flushRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const scheduleSave = (delayMs: number, errorRetriesLeft: number) => {
@@ -118,5 +121,37 @@ export function useAutoSave<TFormValues extends FieldValues>({
     };
   }, [watch, debounceMs, setError, publicErrorMessage]);
 
-  return { isSaving, lastSavedAt, saveError };
+  // flush: cancel pending debounce and execute save immediately.
+  const flush = useCallback(() => {
+    if (timeoutRef.current !== undefined) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = undefined;
+    }
+    const latestValues = latestValuesRef.current;
+    if (!latestValues) return;
+    if (Object.keys(errorsRef.current).length > 0) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    void (async () => {
+      try {
+        await mutationFnRef.current(latestValues);
+        setLastSavedAt(new Date());
+      } catch (err) {
+        const message = normalizeApiError(
+          err,
+          publicErrorMessage ?? pl.common.error,
+        );
+        setSaveError(message);
+        setError("root", { message });
+      } finally {
+        setIsSaving(false);
+      }
+    })();
+  }, [setError, publicErrorMessage]);
+
+  flushRef.current = flush;
+
+  return { isSaving, lastSavedAt, saveError, flush };
 }
