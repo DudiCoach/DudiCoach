@@ -201,9 +201,9 @@ test.describe("US-012 - fitness tests feature", () => {
       ).toBeVisible();
 
       // squat_1rm is a universal test (sports: "all") — valid regardless of sport.
-      await page.locator("#test-selector").selectOption("squat_1rm");
-      await page.locator("#test-value").fill("100");
-      await page.locator("#test-date").fill(today);
+      await page.locator("#fitness-test-key").selectOption("squat_1rm");
+      await page.locator("#fitness-test-value").fill("100");
+      await page.locator("#fitness-test-date").fill(today);
       await page.getByRole("button", { name: /Zapisz wynik/i }).click();
 
       // Form closes after successful submit.
@@ -243,32 +243,32 @@ test.describe("US-012 - fitness tests feature", () => {
       await page.getByRole("tab", { name: /^Testy$/i }).click();
       await page.getByRole("button", { name: /Dodaj wynik/i }).click();
 
-      const selector = page.locator("#test-selector");
+      const selector = page.locator("#fitness-test-key");
       await expect(selector).toBeVisible();
 
       // AC-4: five universal tests present when sport=null.
       await expect(
-        page.locator('#test-selector option[value="squat_1rm"]'),
+        page.locator('#fitness-test-key option[value="squat_1rm"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="bench_press_1rm"]'),
+        page.locator('#fitness-test-key option[value="bench_press_1rm"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="deadlift_1rm"]'),
+        page.locator('#fitness-test-key option[value="deadlift_1rm"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="plank_hold"]'),
+        page.locator('#fitness-test-key option[value="plank_hold"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="run_1000m"]'),
+        page.locator('#fitness-test-key option[value="run_1000m"]'),
       ).toBeAttached();
 
       // AC-2: sport-specific tests must NOT be present when sport=null.
       await expect(
-        page.locator('#test-selector option[value="sprint_30m"]'),
+        page.locator('#fitness-test-key option[value="sprint_30m"]'),
       ).toHaveCount(0);
       await expect(
-        page.locator('#test-selector option[value="yoyo_ir1"]'),
+        page.locator('#fitness-test-key option[value="yoyo_ir1"]'),
       ).toHaveCount(0);
 
       // Hint text visible when sport is unset.
@@ -283,16 +283,16 @@ test.describe("US-012 - fitness tests feature", () => {
 
       // After sport is set: pilka_nozna-specific tests are present.
       await expect(
-        page.locator('#test-selector option[value="sprint_30m"]'),
+        page.locator('#fitness-test-key option[value="sprint_30m"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="yoyo_ir1"]'),
+        page.locator('#fitness-test-key option[value="yoyo_ir1"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="t_test"]'),
+        page.locator('#fitness-test-key option[value="t_test"]'),
       ).toBeAttached();
       await expect(
-        page.locator('#test-selector option[value="broad_jump"]'),
+        page.locator('#fitness-test-key option[value="broad_jump"]'),
       ).toBeAttached();
 
       // Hint must be gone once sport is set.
