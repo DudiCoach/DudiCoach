@@ -134,8 +134,13 @@ export default function CoachDayFeedbackDisplay({
               <dt className="text-xs text-muted-foreground">
                 {pl.coach.athlete.plans.feedback.painScore}
               </dt>
-              <dd className="font-medium text-foreground">
+              <dd className={`font-medium ${(feedback.pain_score ?? 0) >= 7 ? "text-destructive" : "text-foreground"}`}>
                 {feedback.pain_score}/10
+                {(feedback.pain_score ?? 0) >= 7 && (
+                  <span className="ml-1.5 text-xs font-normal">
+                    ({pl.coach.athlete.plans.feedback.highPain ?? "wysoki"})
+                  </span>
+                )}
               </dd>
             </div>
             <div>

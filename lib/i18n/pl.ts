@@ -380,6 +380,7 @@ export const pl = {
           rpe: "RPE",
           wellbeing: "Samopoczucie",
           painScore: "Ból",
+          highPain: "wysoki",
           painLocation: "Miejsce bólu",
           painSide: "Strona",
           comment: "Komentarz",
