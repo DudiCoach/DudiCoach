@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PlanFeedbackNotFoundError,
   PlanFeedbackRequestError,
+  PlanFeedbackRateLimitError,
   PlanFeedbackValidationError,
   fetchCoachPlanFeedback,
   fetchPublicDayFeedback,
@@ -13,10 +14,44 @@ import {
 
 type JsonInit = Record<string, unknown>;
 
-function mockJsonResponse(status: number, body: JsonInit) {
+const V2_OUTCOME = {
+  sessionDate: "2026-05-22",
+  sessionStatus: "completed",
+  sessionRpe: 7,
+  wellbeing: 4,
+  painScore: 2,
+  painLocation: "knee",
+  painSide: "left",
+} as const;
+
+const V2_ROW = {
+  id: "feedback-1",
+  plan_id: "plan-1",
+  week_number: 1,
+  day_number: 2,
+  feedback_text: null,
+  session_date: "2026-05-22",
+  session_status: "completed",
+  session_rpe: 7,
+  wellbeing: 4,
+  pain_score: 2,
+  pain_location: "knee",
+  pain_side: "left",
+  created_at: "2026-05-27T10:00:00Z",
+  updated_at: "2026-05-27T10:00:00Z",
+};
+
+function mockJsonResponse(
+  status: number,
+  body: JsonInit,
+  headers: Record<string, string> = {},
+) {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: {
+      get: vi.fn((name: string) => headers[name] ?? null),
+    },
     json: vi.fn().mockResolvedValue(body),
   } as unknown as Response;
 }
@@ -55,6 +90,24 @@ describe("lib/api/plan-feedback", () => {
       "/api/athlete/ABC234/plans/plan-1/feedback?weekNumber=1&dayNumber=2",
     );
     expect(result?.id).toBe("feedback-1");
+  });
+
+  it("adds contractVersion=2 to public GET query", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(mockJsonResponse(200, { data: V2_ROW }));
+
+    const result = await fetchPublicDayFeedback({
+      shareCode: "ABC234",
+      planId: "plan-1",
+      weekNumber: 1,
+      dayNumber: 2,
+      contractVersion: 2,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/athlete/ABC234/plans/plan-1/feedback?weekNumber=1&dayNumber=2&contractVersion=2",
+    );
+    expect(result?.session_status).toBe("completed");
   });
 
   it("returns null for public GET 200 with null payload", async () => {
@@ -111,9 +164,42 @@ describe("lib/api/plan-feedback", () => {
     expect(result.feedback_text).toBe("saved");
   });
 
+  it("sends v2 public POST body with complete outcome", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(mockJsonResponse(200, { data: V2_ROW }));
+
+    const result = await upsertPublicDayFeedback({
+      shareCode: "ABC234",
+      planId: "plan-1",
+      weekNumber: 1,
+      dayNumber: 2,
+      contractVersion: 2,
+      feedbackText: null,
+      outcome: V2_OUTCOME,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/athlete/ABC234/plans/plan-1/feedback",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractVersion: 2,
+          weekNumber: 1,
+          dayNumber: 2,
+          feedbackText: null,
+          outcome: V2_OUTCOME,
+        }),
+      },
+    );
+    expect(result.session_status).toBe("completed");
+  });
+
   it("maps 400 responses to validation error", async () => {
     const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValueOnce(mockJsonResponse(400, { error: "Validation failed" }));
+    fetchMock.mockResolvedValueOnce(
+      mockJsonResponse(400, { error: "Validation failed" }),
+    );
 
     await expect(
       upsertPublicDayFeedback({
@@ -128,7 +214,9 @@ describe("lib/api/plan-feedback", () => {
 
   it("maps 404 responses to not found error", async () => {
     const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValueOnce(mockJsonResponse(404, { error: "Not found" }));
+    fetchMock.mockResolvedValueOnce(
+      mockJsonResponse(404, { error: "Not found" }),
+    );
 
     await expect(
       fetchPublicDayFeedback({
@@ -140,9 +228,33 @@ describe("lib/api/plan-feedback", () => {
     ).rejects.toBeInstanceOf(PlanFeedbackNotFoundError);
   });
 
+  it("maps 429 responses to rate-limit error with retry-after", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      mockJsonResponse(
+        429,
+        { error: "Rate limit exceeded" },
+        { "Retry-After": "123" },
+      ),
+    );
+
+    const promise = upsertPublicDayFeedback({
+      shareCode: "ABC234",
+      planId: "plan-1",
+      weekNumber: 1,
+      dayNumber: 2,
+      feedbackText: "x",
+    });
+
+    await expect(promise).rejects.toBeInstanceOf(PlanFeedbackRateLimitError);
+    await expect(promise).rejects.toMatchObject({ retryAfter: "123" });
+  });
+
   it("maps 500 responses to generic request error", async () => {
     const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValueOnce(mockJsonResponse(500, { error: "Internal" }));
+    fetchMock.mockResolvedValueOnce(
+      mockJsonResponse(500, { error: "Internal" }),
+    );
 
     await expect(
       fetchCoachPlanFeedback({ athleteId: "athlete-1", planId: "plan-1" }),

@@ -51,10 +51,12 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       "[GET /api/athletes/[id]/plans/[planId]/feedback] Athlete lookup failed",
       {
         code: athleteError.code,
-        message: athleteError.message,
       },
     );
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
   if (!athlete) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -75,10 +77,12 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       "[GET /api/athletes/[id]/plans/[planId]/feedback] Plan lookup failed",
       {
         code: planError.code,
-        message: planError.message,
       },
     );
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
   if (!plan) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -87,7 +91,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   const { data, error } = await supabase
     .from("plan_session_feedback")
     .select(
-      "id, plan_id, athlete_id, week_number, day_number, feedback_text, created_at, updated_at",
+      "id, plan_id, athlete_id, week_number, day_number, feedback_text, session_date, session_status, session_rpe, wellbeing, pain_score, pain_location, pain_side, created_at, updated_at",
     )
     .eq("athlete_id", parsedAthleteId.data)
     .eq("plan_id", parsedPlanId.data)
@@ -99,11 +103,16 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       "[GET /api/athletes/[id]/plans/[planId]/feedback] Feedback query failed",
       {
         code: error.code,
-        message: error.message,
       },
     );
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 
-  return NextResponse.json({ data: data ?? [] });
+  return NextResponse.json(
+    { data: data ?? [] },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

@@ -210,7 +210,11 @@ describe("GET /api/athletes/[id]/plans/[planId]/feedback", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(Array.isArray(json.data)).toBe(true);
+    expect(feedbackBuilder.select).toHaveBeenCalledWith(
+      "id, plan_id, athlete_id, week_number, day_number, feedback_text, session_date, session_status, session_rpe, wellbeing, pain_score, pain_location, pain_side, created_at, updated_at",
+    );
     expect(feedbackBuilder.order).toHaveBeenNthCalledWith(1, "week_number", {
       ascending: true,
     });

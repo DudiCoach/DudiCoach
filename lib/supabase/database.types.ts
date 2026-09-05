@@ -573,6 +573,30 @@ export type Database = {
           week_number: number
         }[]
       }
+      get_plan_session_feedback_by_share_code_v2: {
+        Args: {
+          p_code: string
+          p_day_number: number
+          p_plan_id: string
+          p_week_number: number
+        }
+        Returns: {
+          created_at: string
+          day_number: number
+          feedback_text: string | null
+          id: string
+          pain_location: string | null
+          pain_score: number | null
+          pain_side: string | null
+          plan_id: string
+          session_date: string | null
+          session_rpe: number | null
+          session_status: string | null
+          updated_at: string
+          week_number: number
+          wellbeing: number | null
+        }[]
+      }
       reset_share_code: {
         Args: { p_athlete_id: string }
         Returns: string
@@ -594,6 +618,38 @@ export type Database = {
           plan_id: string
           updated_at: string
           week_number: number
+        }[]
+      }
+      upsert_plan_session_feedback_v2: {
+        Args: {
+          p_code: string
+          p_day_number: number
+          p_feedback_text?: string | null
+          p_pain_location?: string | null
+          p_pain_score: number
+          p_pain_side?: string | null
+          p_plan_id: string
+          p_session_date: string
+          p_session_rpe?: number | null
+          p_session_status: string
+          p_week_number: number
+          p_wellbeing: number
+        }
+        Returns: {
+          created_at: string
+          day_number: number
+          feedback_text: string | null
+          id: string
+          pain_location: string | null
+          pain_score: number | null
+          pain_side: string | null
+          plan_id: string
+          session_date: string | null
+          session_rpe: number | null
+          session_status: string | null
+          updated_at: string
+          week_number: number
+          wellbeing: number | null
         }[]
       }
     }

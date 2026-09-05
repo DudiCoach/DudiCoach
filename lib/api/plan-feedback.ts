@@ -1,11 +1,8 @@
 import type { Tables } from "@/lib/supabase/database.types";
+import type { SessionOutcome } from "@/lib/validation/plan-session-feedback";
 
 type PlanSessionFeedbackTableRow = Tables<"plan_session_feedback">;
 
-// Existing feedback endpoints still return the legacy text-feedback shape.
-// feedback_text is nullable in the schema since PR1 (outcome-only rows may
-// omit it); the text-only RPC path cannot produce NULL today, but the type
-// mirrors the deployed schema (design §11).
 export type PlanSessionFeedbackRow = Pick<
   PlanSessionFeedbackTableRow,
   | "id"
@@ -13,11 +10,24 @@ export type PlanSessionFeedbackRow = Pick<
   | "athlete_id"
   | "week_number"
   | "day_number"
+  | "feedback_text"
+  | "session_date"
+  | "session_status"
+  | "session_rpe"
+  | "wellbeing"
+  | "pain_score"
+  | "pain_location"
+  | "pain_side"
   | "created_at"
   | "updated_at"
-> & {
-  feedback_text: PlanSessionFeedbackTableRow["feedback_text"];
-};
+>;
+
+export type PublicPlanSessionFeedbackRow = Omit<
+  PlanSessionFeedbackRow,
+  "athlete_id"
+>;
+
+export type PlanSessionOutcomeInput = SessionOutcome;
 
 export class PlanFeedbackValidationError extends Error {
   constructor() {
@@ -47,6 +57,13 @@ export class PlanFeedbackRequestError extends Error {
   }
 }
 
+export class PlanFeedbackRateLimitError extends Error {
+  constructor(readonly retryAfter: string | null) {
+    super("Plan feedback rate limit exceeded");
+    this.name = "PlanFeedbackRateLimitError";
+  }
+}
+
 export const planFeedbackKeys = {
   all: ["plan-feedback"] as const,
   coachPlan: (athleteId: string, planId: string) =>
@@ -60,9 +77,23 @@ interface PublicDayFeedbackParams {
   dayNumber: number;
 }
 
-interface UpsertPublicDayFeedbackParams extends PublicDayFeedbackParams {
+interface FetchPublicDayFeedbackParams extends PublicDayFeedbackParams {
+  contractVersion?: 2;
+}
+
+interface UpsertPublicDayFeedbackLegacyParams extends PublicDayFeedbackParams {
   feedbackText: string;
 }
+
+interface UpsertPublicDayFeedbackV2Params extends PublicDayFeedbackParams {
+  contractVersion: 2;
+  feedbackText?: string | null;
+  outcome: PlanSessionOutcomeInput;
+}
+
+type UpsertPublicDayFeedbackParams =
+  | UpsertPublicDayFeedbackLegacyParams
+  | UpsertPublicDayFeedbackV2Params;
 
 interface CoachPlanFeedbackParams {
   athleteId: string;
@@ -89,58 +120,75 @@ async function parseJson<T>(response: Response): Promise<T | null> {
   }
 }
 
-function mapStatusToError(status: number): Error {
+function mapResponseToError(response: Response): Error {
+  const { status } = response;
   if (status === 400) return new PlanFeedbackValidationError();
   if (status === 401) return new PlanFeedbackUnauthorizedError();
   if (status === 404) return new PlanFeedbackNotFoundError();
+  if (status === 429) {
+    return new PlanFeedbackRateLimitError(response.headers.get("Retry-After"));
+  }
   return new PlanFeedbackRequestError();
 }
 
-export async function fetchPublicDayFeedback({
-  shareCode,
-  planId,
-  weekNumber,
-  dayNumber,
-}: PublicDayFeedbackParams): Promise<PlanSessionFeedbackRow | null> {
+export async function fetchPublicDayFeedback(
+  params: FetchPublicDayFeedbackParams,
+): Promise<PublicPlanSessionFeedbackRow | null> {
+  const { shareCode, planId, weekNumber, dayNumber, contractVersion } = params;
   const searchParams = new URLSearchParams({
     weekNumber: String(weekNumber),
     dayNumber: String(dayNumber),
   });
+  if (contractVersion === 2) {
+    searchParams.set("contractVersion", "2");
+  }
 
   const response = await fetch(
     `${publicFeedbackBaseUrl(shareCode, planId)}?${searchParams.toString()}`,
   );
 
   if (!response.ok) {
-    throw mapStatusToError(response.status);
+    throw mapResponseToError(response);
   }
 
-  const json = await parseJson<{ data?: PlanSessionFeedbackRow | null }>(response);
+  const json = await parseJson<{ data?: PublicPlanSessionFeedbackRow | null }>(
+    response,
+  );
   return json?.data ?? null;
 }
 
-export async function upsertPublicDayFeedback({
-  shareCode,
-  planId,
-  weekNumber,
-  dayNumber,
-  feedbackText,
-}: UpsertPublicDayFeedbackParams): Promise<PlanSessionFeedbackRow> {
+export async function upsertPublicDayFeedback(
+  params: UpsertPublicDayFeedbackParams,
+): Promise<PublicPlanSessionFeedbackRow> {
+  const { shareCode, planId, weekNumber, dayNumber } = params;
+  const body =
+    "contractVersion" in params && params.contractVersion === 2
+      ? {
+          contractVersion: 2,
+          weekNumber,
+          dayNumber,
+          feedbackText: params.feedbackText ?? null,
+          outcome: params.outcome,
+        }
+      : {
+          weekNumber,
+          dayNumber,
+          feedbackText: params.feedbackText,
+        };
+
   const response = await fetch(publicFeedbackBaseUrl(shareCode, planId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      weekNumber,
-      dayNumber,
-      feedbackText,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    throw mapStatusToError(response.status);
+    throw mapResponseToError(response);
   }
 
-  const json = await parseJson<{ data?: PlanSessionFeedbackRow | null }>(response);
+  const json = await parseJson<{ data?: PublicPlanSessionFeedbackRow | null }>(
+    response,
+  );
   if (!json?.data) {
     throw new PlanFeedbackRequestError();
   }
@@ -155,9 +203,11 @@ export async function fetchCoachPlanFeedback({
   const response = await fetch(coachFeedbackUrl(athleteId, planId));
 
   if (!response.ok) {
-    throw mapStatusToError(response.status);
+    throw mapResponseToError(response);
   }
 
-  const json = await parseJson<{ data?: PlanSessionFeedbackRow[] | null }>(response);
+  const json = await parseJson<{ data?: PlanSessionFeedbackRow[] | null }>(
+    response,
+  );
   return json?.data ?? [];
 }

@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import CoachDayFeedbackDisplay from "@/components/coach/CoachDayFeedbackDisplay";
 import type { PlanSessionFeedbackRow } from "@/lib/api/plan-feedback";
 
-function makeRow(overrides: Partial<PlanSessionFeedbackRow> = {}): PlanSessionFeedbackRow {
+function makeRow(
+  overrides: Partial<PlanSessionFeedbackRow> = {},
+): PlanSessionFeedbackRow {
   return {
     id: "feedback-1",
     plan_id: "plan-1",
@@ -14,6 +16,13 @@ function makeRow(overrides: Partial<PlanSessionFeedbackRow> = {}): PlanSessionFe
     week_number: 2,
     day_number: 3,
     feedback_text: "Line 1\nLine 2",
+    session_date: null,
+    session_status: null,
+    session_rpe: null,
+    wellbeing: null,
+    pain_score: null,
+    pain_location: null,
+    pain_side: null,
     created_at: "2026-05-27T10:00:00Z",
     updated_at: "2026-05-27T11:00:00Z",
     ...overrides,
@@ -34,7 +43,9 @@ describe("CoachDayFeedbackDisplay", () => {
   it("renders script tags as escaped text, not HTML", () => {
     const payload = "<script>alert('xss')</script>";
     const { container } = render(
-      <CoachDayFeedbackDisplay feedback={makeRow({ feedback_text: payload })} />,
+      <CoachDayFeedbackDisplay
+        feedback={makeRow({ feedback_text: payload })}
+      />,
     );
 
     expect(screen.getByText(payload)).toBeInTheDocument();
