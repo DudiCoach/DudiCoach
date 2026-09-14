@@ -86,6 +86,7 @@ run_sql tests/sql/fixtures/us010-diagnostics-seed.sql
 run_sql tests/sql/us010-fms-gates.sql
 run_sql tests/sql/fixtures/us013-load-progressions-seed.sql
 run_sql tests/sql/us013-load-progressions-gates.sql
+run_sql tests/sql/auth-trigger-security.sql
 echo "   clean replay: PASS"
 
 echo "== Phase 2a: upgrade pre-check rejects invalid legacy rows =="
@@ -123,6 +124,7 @@ run_sql tests/sql/fixtures/us010-diagnostics-seed.sql
 run_sql tests/sql/us010-fms-gates.sql
 run_sql tests/sql/fixtures/us013-load-progressions-seed.sql
 run_sql tests/sql/us013-load-progressions-gates.sql
+run_sql tests/sql/auth-trigger-security.sql
 restore_files
 echo "   upgrade replay: PASS"
 
