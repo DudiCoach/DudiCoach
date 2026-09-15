@@ -103,16 +103,41 @@ export default function ProgressionCard({
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         disabled={deleteMutation.isPending}
-        className="text-left w-full"
+        className="w-full text-left"
         aria-expanded={expanded}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-foreground">{exerciseName}</p>
-          {changeBadge()}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">{exerciseName}</p>
+              {changeBadge()}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {entries.length} {entryCountLabel(entries.length)}
+            </p>
+          </div>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            {expanded ? pl.common.close : pl.common.edit}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+              className={`transition-transform duration-200 ${
+                expanded ? "rotate-180" : "rotate-0"
+              }`}
+            >
+              <path
+                d="M4 6l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {entries.length} {entryCountLabel(entries.length)}
-        </p>
       </button>
 
       <div className="mt-3">
