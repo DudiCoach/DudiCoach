@@ -340,4 +340,43 @@ describe("ProgressionCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Usuń/i }));
     expect(deleteMutate).toHaveBeenCalledWith({ entryId: "entry-uuid-001" });
   });
+
+  it("shows a visible expand label with aria-expanded=false when collapsed", () => {
+    setupMutations();
+    render(
+      <ProgressionCard
+        athleteId="a1"
+        exerciseName="Przysiad"
+        entries={[makeEntry()]}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", { name: /Przysiad/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Edytuj")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Obciążenie/i)).not.toBeInTheDocument();
+  });
+
+  it("toggles to the collapse label and reveals edit/delete controls", () => {
+    setupMutations();
+    render(
+      <ProgressionCard
+        athleteId="a1"
+        exerciseName="Przysiad"
+        entries={[makeEntry()]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Przysiad/i }));
+
+    const toggle = screen.getByRole("button", { name: /Przysiad/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Zamknij")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Obciążenie/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Usuń/i })).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Edytuj")).toBeInTheDocument();
+  });
 });
