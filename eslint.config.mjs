@@ -18,6 +18,15 @@ const eslintConfig = defineConfig([
     "test-results/**",
     // Supabase CLI-generated artifacts (supabase start/db reset)
     "supabase/.temp/**",
+    // Vendored agent skills (installed via `npx skills add`, not app source)
+    ".agents/**",
+    ".opencode/**",
+    ".claude/**",
+    ".codex/**",
+    // Firebase hosting build artifacts (created by build.sh, not app source)
+    "functions/.next/**",
+    "functions/public/**",
+    "functions/node_modules/**",
   ]),
 ]);
 
