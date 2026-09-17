@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:oxlint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
+    "@oxlint/plugins": "1.83.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -46,6 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "happy-dom": "^20.8.9",
+    "oxlint": "1.83.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^4",

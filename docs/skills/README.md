@@ -14,20 +14,17 @@ For installation, verification, and the failure backoff ladder, see
 |---|---|---|---|---|---|
 | `adhd` | `.agents/skills/adhd/` | Vendored | [UditAkhourii/adhd](https://github.com/UditAkhourii/adhd) | `16dc239` | MIT |
 | `unlazy` | `.agents/skills/unlazy/` | Vendored | [Leonxlnx/unlazy](https://github.com/Leonxlnx/unlazy) | `1667149` | MIT |
-| `install-anti-slop` | not vendored | Install on demand | [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) | `c44ef22` | MIT |
-| `reticle` | not vendored | Install on demand | [reticlehq/reticle](https://github.com/reticlehq/reticle) | `3a7785d` | Apache-2.0 + FSL |
+| `install-anti-slop` | `.agents/skills/install-anti-slop/` | Vendored and installed | [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) | `c44ef22` | MIT |
+| `reticle` | not vendored | Install on demand | [reticlehq/reticle](https://github.com/reticlehq/reticle) | `3a7785d` | Apache-2.0 + FSL; `skills/` unstated |
 
-`adhd` and `unlazy` are committed to the repository so that cloning it is
-sufficient — no network install required. `anti-slop` and `reticle` are
-installed on demand because both change the build or runtime rather than only
-adding instructions:
+`adhd`, `unlazy`, and `install-anti-slop` are committed to the repository so that
+cloning it is sufficient — no network install required. The anti-slop Oxlint
+plugin is also vendored at `tools/oxlint/anti-slop/`, with provenance in
+[`tools/oxlint/anti-slop/UPSTREAM.md`](../../tools/oxlint/anti-slop/UPSTREAM.md).
 
-- **anti-slop** vendors an Oxlint plugin into `tools/oxlint/anti-slop/` and adds
-  dev dependencies. Its own install skill performs that work and records
-  provenance in `UPSTREAM.md`.
-- **reticle** installs a dev-only SDK into the running app and registers an MCP
-  server machine-wide. Installing through the published npm packages avoids
-  vendoring its FSL-licensed source.
+`reticle` is installed on demand and vendors nothing, because the license for its
+`skills/` directory is not stated. See
+[Reticle — licensing finding and install path](#reticle--licensing-finding-and-install-path).
 
 Each vendored skill directory carries its upstream `LICENSE` file.
 
@@ -140,14 +137,94 @@ Full details in [`INSTALL.md`](./INSTALL.md).
 
 ---
 
+## Reticle — licensing finding and install path
+
+Reticle was inspected before vendoring and is **deliberately not vendored**.
+
+### What the license says
+
+`reticlehq/reticle` uses a per-package model, recorded in its root `LICENSE`:
+
+| Component | License |
+|---|---|
+| `@reticlehq/core`, `browser`, `react`, `babel-plugin`, `next`, `vite-plugin`, `eslint-plugin` | Apache-2.0 — explicitly safe to embed in your own app |
+| `@reticlehq/server`, `init`, `test` | FSL-1.1-ALv2 — free for any Permitted Purpose; the one restriction is offering Reticle itself as a competing product; each version converts to Apache-2.0 two years after release |
+| `packages/server/src/ee/` | Reticle Enterprise License — production use needs a subscription key |
+
+The root `LICENSE` states that "each package contains its own LICENSE file,
+which is authoritative." It covers **npm packages only**.
+
+### Why nothing is vendored
+
+The repository's `skills/` directory — twelve `SKILL.md` files plus supporting
+references — carries **no stated license**. The root overview does not mention
+it, and there is no `LICENSE` inside `skills/`. Redistribution terms for those
+files are therefore undefined.
+
+Rather than guess, this repository installs Reticle through its official path
+and vendors nothing:
+
+```powershell
+$env:RETICLE_INSTALL_SOURCE = "readme"
+npx @reticlehq/server init
+```
+
+That pulls the published Apache-2.0 SDK packages, registers the MCP server, and
+installs Reticle's own skills through Reticle's own installer — so licensing
+stays with upstream and no file of unclear terms is committed here.
+
+If the team later wants the skills committed, ask Reticle Labs
+(<hey@reticle.sh>) to clarify the license for `skills/`, then revisit.
+
+### Available Reticle skills (installed by `init`, not vendored)
+
+Inspected at commit `3a7785dda4c56712501da4fbf7626b49368fee8d`:
+
+`agentic-tdd`, `audit-my-app`, `debug-broken-ui`, `design-system-compliance`,
+`drive-desktop-app`, `false-green-tests`, `fix-what-i-pointed-at`,
+`install-and-verify`, `replay-user-flows`, `test-error-states`,
+`verify-ui-change`, `verify-unattended`
+
+All twelve have valid frontmatter (`name` matches its directory, descriptions
+373–473 characters) and would load in both hosts once installed.
+
+The repository's **root** `SKILL.md` has no YAML frontmatter. It is the install
+and verify critical path meant to be fetched or pasted, not discovered, so it
+would not load as a skill in OpenCode or Codex. `install-and-verify` is the
+discoverable entry point.
+
+### MCP wiring
+
+`init` registers the MCP server for every agent on the machine, including
+OpenCode and Codex, so no hand-written MCP configuration is needed or wanted
+here. Hand-registering a server that is not yet installed would break agent
+startup.
+
+After `init`, restart the client once so the tools appear. On Codex, prefer:
+
+```powershell
+npx @reticlehq/server init --relaunch
+```
+
+which prints the exact resume command instead of asking for a manual restart.
+
+Setup is not complete until a verdict exists. Writing config files is not an
+install; a connected session is not an install. Only `reticle_act_and_wait` and
+`reticle_assert` produce a verdict.
+
+Windows specifics are in [`INSTALL.md`](./INSTALL.md#5-per-skill-notes).
+
+---
+
 ## Repository integration
 
 | Concern | Handling |
 |---|---|
-| Linting | `eslint.config.mjs` ignores `.agents/**`, `.opencode/**`, `.claude/**`, `.codex/**` so vendored skill scripts are not linted as application source |
-| CI | No CI job runs these skills. They are developer tooling, not build inputs |
-| Dependencies | None added. `adhd` is prompt-only; `unlazy` scripts use only `node:` builtins |
-| Secrets | No skill in this set requires a credential. `reticle` writes `RETICLE_LICENSE_KEY` to `.env` only if an enterprise key is supplied, and `.env` is already gitignored |
+| ESLint | `eslint.config.mjs` ignores `.agents/**`, `.opencode/**`, `.claude/**`, `.codex/**`, and the `functions` build output, so vendored skill scripts and build chunks are not linted as application source |
+| Oxlint | `.oxlintrc.json` registers the vendored plugin and 19 rules. Runs via `npm run lint:oxlint` in **advisory mode only** — deliberately not wired into `.github/workflows/ci.yml`, so it cannot fail a build. ESLint remains the enforced linter |
+| CI | No CI job runs these skills or Oxlint. They are developer tooling, not build inputs |
+| Dependencies | `oxlint@1.83.0` and `@oxlint/plugins@1.83.0`, both pinned exactly as devDependencies. `adhd` is prompt-only; `unlazy` and the anti-slop installer use only `node:` builtins |
+| Secrets | No vendored skill requires a credential. `reticle` writes `RETICLE_LICENSE_KEY` to `.env` only if an enterprise key is supplied, and `.env` is already gitignored |
 
 ---
 
