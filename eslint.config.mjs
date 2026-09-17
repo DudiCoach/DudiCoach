@@ -27,6 +27,8 @@ const eslintConfig = defineConfig([
     "functions/.next/**",
     "functions/public/**",
     "functions/node_modules/**",
+    // Vendored anti-slop Oxlint plugin (upstream code, not app source)
+    "tools/oxlint/**",
   ]),
 ]);
 
